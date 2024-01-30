@@ -1,5 +1,7 @@
 import stella
 import numpy as np
+from scipy.integrate import trapezoid
+import astropy.units as u
 
 
 def prep_stella(out_path='data'):
@@ -116,3 +118,34 @@ def get_flares(flare_prob, threshold=0.3, min_flare_points=3, merge_absolute=2, 
     flare_mask[flare_inds] = True
 
     return flare_mask, flare_starts, flare_ends
+
+def calc_equivalent_durations(lc, flare_starts, flare_ends, gp_mean,
+                              rel_buffer_start=0.05, rel_buffer_end=0.2):
+    """Calculate the equivalent duration of each flare in a lightcurve.
+
+    Parameters
+    ----------
+    lc : :class:`lightkurve.lightcurve.TessLightCurve`
+        Lightcurve
+    flare_starts : :class:`numpy.ndarray`
+        Indices of flare starts
+    flare_ends : :class:`numpy.ndarray`
+        Indices of flare ends
+    gp_mean : :class:`numpy.ndarray`
+        Gaussian process mean
+    rel_buffer_start : `float`, optional
+        Buffer before the flare start as a fraction of the flare duration, by default 0.05
+    rel_buffer_end : float, optional
+        Buffer after the flare end as a fraction of the flare duration, by default 0.2
+
+    Returns
+    -------
+    eq_durations : :class:`numpy.ndarray`
+        Equivalent durations of the flares
+    """
+    durations = flare_ends - flare_starts
+    buff_start, buff_end = durations * rel_buffer_start, durations * rel_buffer_end
+    starts, ends = np.floor(flare_starts - buff_start).astype(int), np.ceil(flare_ends + buff_end).astype(int)
+    return [trapezoid(y=(lc.flux.value[start:end] - gp_mean[start:end]) / np.median(lc.flux.value),
+                      x=lc.time.value[start:end])
+            for start, end in zip(starts, ends)] * u.day
