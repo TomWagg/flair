@@ -1,6 +1,33 @@
 import lightkurve as lk
 import numpy as np
 
+__all__ = ["get_all_lightcurves"]
+
+def _search_obj_to_lc(s):
+    """Download a lightcurve from a search result and reduce to time, flux, and flux_err.
+
+    Parameters
+    ----------
+    s : :class:`lightkurve.search.SearchResult`
+        Search result object
+
+    Returns
+    -------
+    lc : :class:`lightkurve.lightcurve.TessLightCurve`
+        Lightcurve with time, flux, and flux_err
+    """
+    # download the full lightcurve
+    lc = s.download()
+
+    # reduce to just time, flux, and flux_err (using PDCSAP flux)
+    lc = lc[["time", "pdcsap_flux", "pdcsap_flux_err"]]
+    lc["flux"] = lc["pdcsap_flux"]
+    lc["flux_err"] = lc["pdcsap_flux_err"]
+    lc.remove_columns(["pdcsap_flux", "pdcsap_flux_err"])
+
+    # return lightcurve with NaNs removed
+    return lc[~np.isnan(lc.flux)]
+
 def get_all_lightcurves(**kwargs):
     """Get all lightcurves matching the given search criteria.
 
@@ -14,9 +41,5 @@ def get_all_lightcurves(**kwargs):
     :func:`lightkurve.search_lightcurve`
     """
     search = lk.search_lightcurve(**kwargs)
-
-    # @TOBIN: Do we need this?
     search.table["dataURL"] = search.table["dataURI"]
-
-    lcs = [search[i].download().PDCSAP_FLUX for i in range(len(search))]
-    return [lc[~np.isnan(lc.flux.value)] for lc in lcs]
+    return [_search_obj_to_lc(s) for s in search]
