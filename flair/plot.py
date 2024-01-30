@@ -96,9 +96,9 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts, flare_ends, gp,
     gp : :class:`celerite2.gp.GaussianProcess`
         GP object
     mu : :class:`numpy.ndarray`, optional
-        GP mean, by default None
+        GP mean, by default None (calculated from gp.predict)
     variance : :class:`numpy.ndarray`, optional
-        GP variance, by default None
+        GP variance, by default None (calculated from gp.predict)
     time_lims : `tuple`, optional
         Time limits for the plot, by default None
     highlight_flares : `bool`, optional

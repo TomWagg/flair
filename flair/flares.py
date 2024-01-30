@@ -107,8 +107,8 @@ def get_flares(flare_prob, threshold=0.3, min_flare_points=3, merge_absolute=2, 
     long_enough_flares = [f for f in merged_flares if len(f) >= min_flare_points]
 
     # get indices of flare starts and ends
-    flare_starts = [f[0] for f in long_enough_flares]
-    flare_ends = [f[-1] for f in long_enough_flares]
+    flare_starts = np.array([f[0] for f in long_enough_flares])
+    flare_ends = np.array([f[-1] for f in long_enough_flares])
 
     # create a mask for timesteps that are part of a flare
     flare_mask = np.zeros(len(flare_prob), dtype=bool)
