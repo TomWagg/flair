@@ -29,7 +29,7 @@ def prep_stella(out_path='data'):
     return cnn, ds.models
 
 
-def get_stella_predictions(cnn, models, lc):
+def get_stella_predictions(cnn=None, models=None, lc=None, time=None, flux=None, flux_err=None):
     """Get the median flare probability across all models for each timestep in a lightcurve using Stella.
 
     Parameters
@@ -38,21 +38,32 @@ def get_stella_predictions(cnn, models, lc):
         The Stella ConvNN object
     models : :class:`list`
         List of trained stellar models
-    lc : :class:`lightkurve.lightcurve.TessLightCurve`
+    lc : :class:`lightkurve.lightcurve.TessLightCurve`, optional
         Lightcurve to predict on
+    time : :class:`numpy.ndarray`, optional
+        Time values for the lightcurve (required if `lc` is not provided)
+    flux : :class:`numpy.ndarray`, optional
+        Flux values for the lightcurve (required if `lc` is not provided)
+    flux_err : :class:`numpy.ndarray`, optional
+        Flux error values for the lightcurve (required if `lc` is not provided)
 
     Returns
     -------
     avg_pred : :class:`numpy.ndarray`
         Median flare probability across all models for each timestep in the lightcurve
     """
+    # get time, flux, and flux_err if not provided
+    if lc is not None:
+        time, flux, flux_err = lc.time.value, lc.flux.value, lc.flux_err.value
+
+    # set up Stella if not provided
+    if cnn is None or models is None:
+        cnn, models = prep_stella()
+
     # predict the flare probability for each model
-    preds = np.zeros((len(models), len(lc)))
+    preds = np.zeros((len(models), len(flux)))
     for j, model in enumerate(models):
-        cnn.predict(modelname=model,
-                    times=lc.time.value,
-                    fluxes=lc.flux.value,
-                    errs=lc.flux_err.value)
+        cnn.predict(modelname=model, times=time, fluxes=flux, errs=flux_err)
         preds[j] = cnn.predictions[0]
 
     # return the median probability across all models, ignoring NaNs
