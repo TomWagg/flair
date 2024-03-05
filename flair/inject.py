@@ -4,7 +4,7 @@ import numpy as np
 from astropy.table import Table
 from multiprocessing import Pool
 
-def inject_flare(time, flux, amp, fwhm, insert_timestep):
+def inject_flare(time, flux, amp, fwhm, insert_timestep, flare_mask):
     """Inject a flare into a lightcurve.
 
     Parameters
@@ -19,14 +19,15 @@ def inject_flare(time, flux, amp, fwhm, insert_timestep):
         Full Width at Half Maximum of the flare
     insert_timestep : `int`
         Index of the timestep to insert the flare at
+    flare_mask : :class:`numpy.ndarray`
+        Boolean array with True for timesteps that are part of a flare
 
     Returns
     -------
     adjusted_lc : :class:`lightkurve.lightcurve.TessLightCurve`
         Lightcurve with the flare injected
     """
-    # TODO: should the median be taken over the *entire* lightcurve or just the parts without flares?
-    model_flux = lupita.flare_model(time, time[insert_timestep], fwhm, amp * np.median(flux))
+    model_flux = lupita.flare_model(time, time[insert_timestep], fwhm, amp * np.median(flux[~flare_mask]))
     return flux + np.array(np.nan_to_num(model_flux, nan=0.0))
 
 def is_recovered(cnn, models, time, flux, flux_err, timestep, threshold=0.3, min_flare_points=3):
@@ -94,7 +95,7 @@ def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, n_e
     rand_insertion_point = np.random.choice(not_flare_inds)
 
     adjusted_flux = inject_flare(time=time, flux=flux, amp=amp, fwhm=fwhm,
-                                 insert_timestep=rand_insertion_point)
+                                 insert_timestep=rand_insertion_point, flare_mask=flare_mask)
     return is_recovered(cnn=cnn, models=models, time=time, flux=adjusted_flux, flux_err=flux_err,
                         timestep=rand_insertion_point)
 
