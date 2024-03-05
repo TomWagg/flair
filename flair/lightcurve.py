@@ -28,6 +28,27 @@ def _search_obj_to_lc(s):
     # return lightcurve with NaNs removed
     return lc[~np.isnan(lc.flux)]
 
+def get_lightcurve(ind=0, **kwargs):
+    """Get a lightcurve matching the given search criteria.
+
+    Parameters
+    ----------
+    ind : `int`, optional
+        Index of the search to download, by default 0
+    **kwargs : `dict`
+        Search criteria
+
+    Returns
+    -------
+    lc : :class:`lightkurve.lightcurve.TessLightCurve`
+        Lightcurve with time, flux, and flux_err
+
+    See Also
+    --------
+    :func:`lightkurve.search_lightcurve`
+    """
+    return _search_obj_to_lc(lk.search_lightcurve(**kwargs)[ind])
+
 def get_all_lightcurves(**kwargs):
     """Get all lightcurves matching the given search criteria.
 
