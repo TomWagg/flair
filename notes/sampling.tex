@@ -1,0 +1,99 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[letterpaper, margin=0.8in]{geometry}
+\usepackage{graphicx, setspace, color}
+\usepackage{amsmath,amssymb, amsthm, mathtools, float, physics, esint}
+\usepackage{caption}
+\usepackage{fancyhdr, titling, changepage}
+\usepackage{siunitx, empheq}
+\usepackage{xspace}
+\usepackage{enumitem}
+\usepackage[colorlinks,allcolors=blue,bookmarks=false,hypertexnames=true]{hyperref}
+
+\usepackage[dvipsnames]{xcolor}
+
+\usepackage[natbib,style=apa,sorting=ynt,sortcites=true]{biblatex}
+\addbibresource{references.bib}
+
+\title{Sampling flares}
+\author{Tom Wagg}
+\allowdisplaybreaks
+
+% Headers
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\theauthor}
+\lhead{\thetitle}
+\rfoot{Page \thepage}
+
+% large box
+\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
+
+% Title maker
+\newcommand{\DocTitle}{
+    \begin{center}
+        {\noindent\Large\bf  \\[0.5\baselineskip] {\fontfamily{cmr}\selectfont \thetitle}}\\
+        \hfill{\noindent\Large\bf  \\}\hfill\\[0.5\baselineskip]
+    \end{center}
+}
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\DocTitle{}
+
+\section{Flare energies}
+\subsection{M \& K stars}
+
+The general form of the flare frequency distribution is given by
+\begin{equation}
+    \log_{10} \nu(E) = \alpha \log_{10} E + \beta
+\end{equation}
+where $\nu(E)$ is the number of flares per day with at least an energy $E$, $\alpha$ and $\beta$ are constants and $E$ is the energy of the flare. This form is sort of the opposite of a CDF, and can be referred to as a top-tail distribution. In order to sample from this distribution we can use the inverse transform method. Assuming the distribution is defined between $E_{\text{min}}$ and $E_{\text{max}}$, the total number of flares per day (for normalisation) is given by
+\begin{equation}
+    N_{\rm tot} = \nu(E_{\rm min}) - \nu(E_{\rm max}).
+\end{equation}
+Then we can use this to get the CDF pretty simply as just
+\begin{equation}
+    F(E) = 1 - \frac{\nu(E)}{N_{\rm tot}}.
+\end{equation}
+Then we need to convert this to the inverse CDF:
+\begin{align}
+    E &= 1 - \frac{\nu(F^{-1}(E))}{N_{\rm tot}} \\
+    (1 - E) N_{\rm tot} &= \nu(F^{-1}(E)) \\
+    (1 - E) N_{\rm tot} &= 10^{\alpha \log_{10} F^{-1}(E) + \beta} \\
+    (1 - E) N_{\rm tot} &= 10^{\beta} [F^{-1}(E)]^\alpha \\
+    \Aboxed{ F^{-1}(E) &= \qty(\frac{(1 - E) N_{\rm tot}}{10^{\beta}})^{1/\alpha} }
+\end{align}
+Nice! For sampling we just plug in a random uniform variable into this to get flare energies.
+
+\subsection{G stars}
+The form we use for G stars is similar, but needs to be converted from years to days and multiplied by the energy bin widths.
+\begin{equation}
+    \nu(E) = \frac{10^\beta}{365} E^{1 + \alpha}
+\end{equation}
+This gives the same $N_{\rm tot}$ and $F(E)$ as before, but the inverse CDF is slightly different:
+\begin{align}
+    E &= 1 - \frac{\nu(F^{-1}(E))}{N_{\rm tot}} \\
+    (1 - E) N_{\rm tot} &= \nu(F^{-1}(E)) \\
+    (1 - E) N_{\rm tot} &= \frac{10^{\beta}}{365} [F^{-1}(E)]^{1 + \alpha} \\
+    \Aboxed{ F^{-1}(E) &= \qty(\frac{{\color{red}365} (1 - E) N_{\rm tot}}{10^{\beta}})^{1/({\color{red}1 + } \alpha)} }
+\end{align}
+
+\section{Amplitudes}
+
+We use the distributions from the Superflares paper to get a relation between the flare amplitude and energy for different stellar classes. This relation gives an amplitude $A$ for a flare of energy $E$, with some additional scatter such that it is not a 1-to-1 relation.
+
+\section{FWHM}
+
+This one is simple, applying Lupita's flare model we know that
+\begin{equation}
+    \text{FWHM} = E / 2.0487 * A 
+\end{equation}
+
+\section{Summary}
+
+So in summary we can sample a flare energy, use that to get an amplitude, and then use the energy and amplitude to get the FWHM. This is all we need to generate a flare light curve with Lupita's flare model and inject it into the light curves.
+
+\end{document}
