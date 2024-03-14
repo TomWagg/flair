@@ -75,17 +75,19 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
             g.create_dataset("flare_mask", data=flare_mask)
 
     if file_exists and "gp" in file_keys:
-        pass
+        with h5.File(out_path + f"{tic}_sector{lc.sector}.h5", "r") as f:
+            mu = f["lc/mu"][:]
+            variance = f["lc/variance"][:]
+    else:
+        # fit the GP to the lightcurve
+        opt_gp = flair.gp.fit_GP(lc, flare_mask)
+        mu, variance = opt_gp.predict(y=lc.flux.value[~flare_mask], t=lc.time.value, return_var=True)
 
-    # fit the GP to the lightcurve
-    opt_gp = flair.gp.fit_GP(lc, flare_mask)
-    mu, variance = opt_gp.predict(y=lc.flux.value[~flare_mask], t=lc.time.value, return_var=True)
-
-    # CHECKPOINT 2: save the GP mean and variance
-    with h5.File(out_path + f"{tic}_sector{lc.sector}.h5", "a") as f:
-        g = f["lc"]
-        g.create_dataset("mu", data=mu)
-        g.create_dataset("variance", data=variance)
+        # CHECKPOINT 2: save the GP mean and variance
+        with h5.File(out_path + f"{tic}_sector{lc.sector}.h5", "a") as f:
+            g = f["lc"]
+            g.create_dataset("mu", data=mu)
+            g.create_dataset("variance", data=variance)
 
     flair.inject.each_flare(lc=lc, flare_mask=flare_mask, flare_table_path=TODO,
                             cnn=cnn, models=models, n_repeat=n_repeat, processes=cpu_count)
