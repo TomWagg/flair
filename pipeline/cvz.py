@@ -89,9 +89,6 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
             g.create_dataset("mu", data=mu)
             g.create_dataset("variance", data=variance)
 
-    flair.inject.each_flare(lc=lc, flare_mask=flare_mask, flare_table_path=TODO,
-                            cnn=cnn, models=models, n_repeat=n_repeat, processes=cpu_count)
-
 
 # setup argparse
 def main():
