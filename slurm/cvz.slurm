@@ -9,7 +9,7 @@
 #SBATCH --mem=10G
 #SBATCH -o /gscratch/dirac/flair/slurm/logs/cvz_%a_%A.out
 #SBATCH -e /gscratch/dirac/flair/slurm/logs/cvz_%a_%A.err
-#SBATCH --chdir=/gscratch/astro/wagg/radius-valley/slurm
+#SBATCH --chdir=/gscratch/dirac/flair/pipeline
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=tomwagg@uw.edu          <--- CHANGE THIS TO YOUR EMAIL!!!
 #SBATCH --export=all
