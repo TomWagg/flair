@@ -1,3 +1,6 @@
+import sys
+sys.path.append("../")
+
 import flair
 import lightkurve as lk
 import argparse
