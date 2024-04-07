@@ -1,0 +1,14 @@
+name: flair
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python = 3.10
+  - pip
+  - numpy
+  - scipy
+  - pandas
+  - pip:
+    - lightkurve == 2.4.2
+    # install stella from the forked repository that fixed sklearn issue
+    - stella @ git+https://github.com/jaytmiller/stella@scikit-learn-update
