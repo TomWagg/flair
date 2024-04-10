@@ -4,6 +4,15 @@ import numpy as np
 from astropy.table import Table
 from multiprocessing import Pool
 
+__all__ = ['inject_flare', 'is_recovered', 'injection_test', 'each_flare', 'amplitude_to_energy']
+
+# fits from Althukair+23 (https://arxiv.org/abs/2212.10224)
+_amp_E_lines = {'G': np.poly1d([ 1.18996884, 37.27283556]),
+                'K': np.poly1d([ 1.18075204, 36.61235441]),
+                'M': np.poly1d([ 1.75999376, 36.05875657])}
+_amp_E_scatter = {'G': 0.1754525572603882, 'K': 0.21504357742404395, 'M': 0.27823866674159486}
+
+
 def inject_flare(time, flux, amp, fwhm, insert_timestep, flare_mask):
     """Inject a flare into a lightcurve.
 
@@ -150,3 +159,26 @@ def each_flare(lc, flare_mask, flare_table_path,
             recovered[:, i] = [injection_test(*arg) for arg in args(amps, fwhms)]
 
     return recovered
+
+
+def amplitude_to_energy(amp, stellar_class):
+    """Convert a flare amplitude to an energy.
+    
+    Using the fits from Althukair+23 (https://arxiv.org/abs/2212.10224) convert a flare amplitude to an energy
+    accounting for the scatter in the relationship and difference for different stellar classes.
+
+    Parameters
+    ----------
+    amp : :class:`numpy.ndarray` or `float`
+        Flare amplitude
+    stellar_class : `str`
+        Stellar class
+
+    Returns
+    -------
+    E : :class:`numpy.ndarray`
+        Flare energy in erg
+    """
+    n_flares = len(amp) if isinstance(amp, np.ndarray) else 1
+    scatter = np.random.normal(0, _amp_E_scatter[stellar_class], n_flares)
+    return 10**(_amp_E_lines[stellar_class](np.log10(amp)) + scatter)
