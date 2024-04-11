@@ -135,7 +135,7 @@ def evaluate_completeness(lc, flare_mask, cnn=None, models=None,
         Boolean array with True for each flare that was recovered
     """
     # flare amplitudes are set by the typical uncertainty in the lightcurve
-    norm_median_error = np.median(lc.flux_err) / np.median(lc.flux)
+    norm_median_error = (np.median(lc.flux_err.value) / np.median(lc.flux.value)).tolist()
     amps = np.logspace(np.log10(norm_median_error), np.log10(10 * norm_median_error), n_inject)
 
     # convert the amplitudes to energies
@@ -169,7 +169,7 @@ def evaluate_completeness(lc, flare_mask, cnn=None, models=None,
         for i in range(n_repeat):
             recovered[:, i] = [injection_test(*arg) for arg in args(amps, fwhms, insert_points[:, i])]
 
-    return recovered
+    return recovered, amps, energies, insert_points
 
 
 def amplitude_to_energy(amp, stellar_class):
