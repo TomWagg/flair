@@ -99,9 +99,6 @@ def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, n_e
     recovered : `bool`
         Whether the injected flare was recovered
     """
-    all_inds = np.arange(len(flux))
-    not_flare_inds = all_inds[~flare_mask & (all_inds > n_end_avoid) & (all_inds < len(flux) - n_end_avoid)]
-    rand_insertion_point = np.random.choice(not_flare_inds)
 
     adjusted_flux = inject_flare(time=time, flux=flux, amp=amp, fwhm=fwhm,
                                  insert_timestep=rand_insertion_point, flare_mask=flare_mask)
@@ -109,9 +106,11 @@ def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, n_e
                         timestep=rand_insertion_point)
 
 
-def each_flare(lc, flare_mask, flare_table_path,
-               cnn=None, models=None, n_end_avoid=5, n_repeat=10, processes=1):
-    """Test the recovery of each flare in a lightcurve.
+def evaluate_completeness(lc, flare_mask, flare_table_path, cnn=None, models=None,
+                          n_end_avoid=5, n_inject=50, n_repeat=10, processes=1):
+    """Evaluate the completeness of stella for a given lightcurve.
+    
+    Inject flares and test their recovery. Return details of the injected flares and the recovery rate.
 
     Parameters
     ----------
@@ -119,46 +118,56 @@ def each_flare(lc, flare_mask, flare_table_path,
         Lightcurve to test
     flare_mask : :class:`numpy.ndarray`
         Boolean array with True for timesteps that are part of a flare
-    flare_table_path : `str`
-        Path to the flare table
     cnn : :class:`stella.ConvNN`
         The Stella ConvNN object, by default None (created if not provided)
     models : :class:`list`
         List of trained stellar models, by default None (created if not provided)
     n_end_avoid : `int`, optional
         Number of timesteps to avoid at the start and end of the lightcurve, by default 5
+    n_inject : `int`, optional
+        Number of flares to inject, by default 50
     n_repeat : `int`, optional
-        Number of times to repeat the test, by default 10
+        Number of times to repeat the test on each flare, by default 10
 
     Returns
     -------
-    recovered : :class:`numpy.ndarray`, shape = (n_flares, n_repeat)
+    recovered : :class:`numpy.ndarray`, shape = (n_inject, n_repeat)
         Boolean array with True for each flare that was recovered
     """
-    # read in the synthetic flares and create an array to store the results
-    synthetic_flares = Table.read(flare_table_path, format='mrt')
-    recovered = np.zeros((len(synthetic_flares), n_repeat), dtype=bool)
-    amps, fwhms = synthetic_flares["Amp"].value, synthetic_flares["FWHM"].value
+    # flare amplitudes are set by the typical uncertainty in the lightcurve
+    norm_median_error = np.median(lc.flux_err) / np.median(lc.flux)
+    amplitudes = np.logspace(np.log10(norm_median_error), np.log10(10 * norm_median_error), n_inject)
 
-    # get the time, flux, and flux_err from the lightcurve in simple ndarrays (pools are picky)
-    time, flux, flux_err = np.array(lc.time.value), np.array(lc.flux.value), np.array(lc.flux_err.value)
+    # convert the amplitudes to energies and FWHMs
+    energies = amplitude_to_energy(amplitudes, "G")
+    fwhms = (energies / 2.0487) * amplitudes
 
-    # create a generator to pass to the parallel processing function
-    def args(amps, fwhms):
-        for amp, fwhm in zip(amps, fwhms):
-            yield time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, n_end_avoid
+    # draw random injection times
+    all_inds = np.arange(len(lc))
+    not_flare_inds = all_inds[~flare_mask & (all_inds > n_end_avoid) & (all_inds < len(lc) - n_end_avoid)]
+    insertion_points = np.random.choice(not_flare_inds, size=n_inject * n_repeat)
 
-    # if the user wants to use parallel processing, do so
-    if processes > 1:
-        with Pool(processes) as pool:
-            for i in range(n_repeat):
-                recovered[:, i] = list(pool.starmap(injection_test, args(amps, fwhms)))
-    # otherwise, just loop through the flares one at a time
-    else:
-        for i in range(n_repeat):
-            recovered[:, i] = [injection_test(*arg) for arg in args(amps, fwhms)]
+    recovered = np.zeros((n_inject, n_repeat), dtype=bool)
 
-    return recovered
+    # # get the time, flux, and flux_err from the lightcurve in simple ndarrays (pools are picky)
+    # time, flux, flux_err = np.array(lc.time.value), np.array(lc.flux.value), np.array(lc.flux_err.value)
+
+    # # create a generator to pass to the parallel processing function
+    # def args(amps, fwhms):
+    #     for amp, fwhm in zip(amps, fwhms):
+    #         yield time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, n_end_avoid
+
+    # # if the user wants to use parallel processing, do so
+    # if processes > 1:
+    #     with Pool(processes) as pool:
+    #         for i in range(n_repeat):
+    #             recovered[:, i] = list(pool.starmap(injection_test, args(amps, fwhms)))
+    # # otherwise, just loop through the flares one at a time
+    # else:
+    #     for i in range(n_repeat):
+    #         recovered[:, i] = [injection_test(*arg) for arg in args(amps, fwhms)]
+
+    # return recovered
 
 
 def amplitude_to_energy(amp, stellar_class):
