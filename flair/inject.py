@@ -70,7 +70,7 @@ def is_recovered(cnn, models, time, flux, flux_err, timestep, threshold=0.3, min
     offset = (min_flare_points - 1) // 2
     return np.all(avg_pred[timestep - offset:timestep + offset] > threshold)
 
-def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, n_end_avoid=5):
+def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, insertion_point):
     """Test the recovery of an injected flare.
 
     Parameters
@@ -101,12 +101,12 @@ def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, n_e
     """
 
     adjusted_flux = inject_flare(time=time, flux=flux, amp=amp, fwhm=fwhm,
-                                 insert_timestep=rand_insertion_point, flare_mask=flare_mask)
+                                 insert_timestep=insertion_point, flare_mask=flare_mask)
     return is_recovered(cnn=cnn, models=models, time=time, flux=adjusted_flux, flux_err=flux_err,
-                        timestep=rand_insertion_point)
+                        timestep=insertion_point)
 
 
-def evaluate_completeness(lc, flare_mask, flare_table_path, cnn=None, models=None,
+def evaluate_completeness(lc, flare_mask, cnn=None, models=None,
                           n_end_avoid=5, n_inject=50, n_repeat=10, processes=1):
     """Evaluate the completeness of stella for a given lightcurve.
     
@@ -136,38 +136,40 @@ def evaluate_completeness(lc, flare_mask, flare_table_path, cnn=None, models=Non
     """
     # flare amplitudes are set by the typical uncertainty in the lightcurve
     norm_median_error = np.median(lc.flux_err) / np.median(lc.flux)
-    amplitudes = np.logspace(np.log10(norm_median_error), np.log10(10 * norm_median_error), n_inject)
+    amps = np.logspace(np.log10(norm_median_error), np.log10(10 * norm_median_error), n_inject)
 
-    # convert the amplitudes to energies and FWHMs
-    energies = amplitude_to_energy(amplitudes, "G")
-    fwhms = (energies / 2.0487) * amplitudes
+    # convert the amplitudes to energies
+    energies = amplitude_to_energy(amps, "G")
+
+    # calculate the FWHM of the flares based on Lupita's model
+    fwhms = (energies / 2.0487) * amps
 
     # draw random injection times
     all_inds = np.arange(len(lc))
     not_flare_inds = all_inds[~flare_mask & (all_inds > n_end_avoid) & (all_inds < len(lc) - n_end_avoid)]
-    insertion_points = np.random.choice(not_flare_inds, size=n_inject * n_repeat)
+    insert_points = np.random.choice(not_flare_inds, size=(n_inject, n_repeat))
 
     recovered = np.zeros((n_inject, n_repeat), dtype=bool)
 
     # # get the time, flux, and flux_err from the lightcurve in simple ndarrays (pools are picky)
-    # time, flux, flux_err = np.array(lc.time.value), np.array(lc.flux.value), np.array(lc.flux_err.value)
+    time, flux, flux_err = np.array(lc.time.value), np.array(lc.flux.value), np.array(lc.flux_err.value)
 
     # # create a generator to pass to the parallel processing function
-    # def args(amps, fwhms):
-    #     for amp, fwhm in zip(amps, fwhms):
-    #         yield time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, n_end_avoid
+    def args(amps, fwhms, insert_points):
+        for amp, fwhm, ip in zip(amps, fwhms, insert_points):
+            yield time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, ip
 
-    # # if the user wants to use parallel processing, do so
-    # if processes > 1:
-    #     with Pool(processes) as pool:
-    #         for i in range(n_repeat):
-    #             recovered[:, i] = list(pool.starmap(injection_test, args(amps, fwhms)))
-    # # otherwise, just loop through the flares one at a time
-    # else:
-    #     for i in range(n_repeat):
-    #         recovered[:, i] = [injection_test(*arg) for arg in args(amps, fwhms)]
+    # if the user wants to use parallel processing, do so
+    if processes > 1:
+        with Pool(processes) as pool:
+            for i in range(n_repeat):
+                recovered[:, i] = list(pool.starmap(injection_test, args(amps, fwhms, insert_points[:, i])))
+    # otherwise, just loop through the flares one at a time
+    else:
+        for i in range(n_repeat):
+            recovered[:, i] = [injection_test(*arg) for arg in args(amps, fwhms, insert_points[:, i])]
 
-    # return recovered
+    return recovered
 
 
 def amplitude_to_energy(amp, stellar_class):
