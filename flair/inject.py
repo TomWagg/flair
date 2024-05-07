@@ -1,7 +1,6 @@
 from . import lupita
 from . import flares
 import numpy as np
-from astropy.table import Table
 from multiprocessing import Pool
 
 __all__ = ['inject_flare', 'is_recovered', 'injection_test', 'each_flare', 'amplitude_to_energy']
@@ -106,7 +105,7 @@ def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, ins
                         timestep=insertion_point)
 
 
-def evaluate_completeness(lc, flare_mask, cnn=None, models=None,
+def evaluate_completeness(lc, flare_mask, cnn=None, models=None, stellar_class="M",
                           n_end_avoid=5, n_inject=50, n_repeat=10, processes=1):
     """Evaluate the completeness of stella for a given lightcurve.
     
@@ -136,13 +135,13 @@ def evaluate_completeness(lc, flare_mask, cnn=None, models=None,
     """
     # flare amplitudes are set by the typical uncertainty in the lightcurve
     norm_median_error = (np.median(lc.flux_err.value) / np.median(lc.flux.value)).tolist()
-    amps = np.logspace(np.log10(norm_median_error), np.log10(10 * norm_median_error), n_inject)
+    amps = np.geomspace(norm_median_error, 10 * norm_median_error, n_inject)
 
     # convert the amplitudes to energies
-    energies = amplitude_to_energy(amps, "G")
+    # energies = amplitude_to_energy(amps, stellar_class)
 
-    # calculate the FWHM of the flares based on Lupita's model
-    fwhms = (energies / 2.0487) * amps
+    # simple choice for FWHM in days
+    fwhms = np.linspace(1, 20, n_inject) / 1440
 
     # draw random injection times
     all_inds = np.arange(len(lc))
@@ -151,7 +150,7 @@ def evaluate_completeness(lc, flare_mask, cnn=None, models=None,
 
     recovered = np.zeros((n_inject, n_repeat), dtype=bool)
 
-    # # get the time, flux, and flux_err from the lightcurve in simple ndarrays (pools are picky)
+    # get the time, flux, and flux_err from the lightcurve in simple ndarrays (pools are picky)
     time, flux, flux_err = np.array(lc.time.value), np.array(lc.flux.value), np.array(lc.flux_err.value)
 
     # # create a generator to pass to the parallel processing function
@@ -169,7 +168,7 @@ def evaluate_completeness(lc, flare_mask, cnn=None, models=None,
         for i in range(n_repeat):
             recovered[:, i] = [injection_test(*arg) for arg in args(amps, fwhms, insert_points[:, i])]
 
-    return recovered, amps, energies, insert_points
+    return recovered, amps, fwhms, insert_points
 
 
 def amplitude_to_energy(amp, stellar_class):
