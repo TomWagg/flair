@@ -14,12 +14,10 @@
 #SBATCH --mail-user=tomwagg@uw.edu          ## <--- CHANGE THIS TO YOUR EMAIL!!!
 #SBATCH --export=all
 
-# we probably only need one of these two lines, may need to delete one eventually?
 source ~/.bashrc
-module load anaconda3_5.3
 
-conda activate /gscratch/dirac/flair/conda_env
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/gscratch/dirac/flair/conda_env/lib
+conda activate /gscratch/dirac/flair/conda/envs/flair
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/gscratch/dirac/flair/conda/lib
 
 LK_CACHE_PATH=/gscratch/scrubbed/flair/
 SCRIPT_PATH=/gscratch/dirac/flair/pipeline/cvz.py
