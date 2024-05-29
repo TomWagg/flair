@@ -4,7 +4,7 @@ from scipy.integrate import trapezoid
 import astropy.units as u
 
 
-def prep_stella(out_path='data'):
+def prep_stella(download_path=None, out_path='data'):
     """Set up the Stella ConvNN object and download the stellar models.
 
     Parameters
@@ -23,7 +23,7 @@ def prep_stella(out_path='data'):
     cnn = stella.ConvNN(output_dir=out_path)
 
     # download the stellar models
-    ds = stella.download_nn_set.DownloadSets()
+    ds = stella.download_nn_set.DownloadSets(fn_dir=download_path)
     ds.download_models()
 
     return cnn, ds.models

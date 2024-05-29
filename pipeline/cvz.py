@@ -88,7 +88,11 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
         logger.info(f"Identifying flares for TIC {tic} in sector n={sector_ind}")
         
         # setup the CNN and models
-        cnn, models = flair.flares.prep_stella(out_path)
+        cnn, models = flair.flares.prep_stella(out_path, out_path)
+
+        print(cnn)
+        print(models)
+        print(lc)
         
         # predict the flares and create a mask
         avg_pred = flair.flares.get_stella_predictions(cnn=cnn, models=models, lc=lc)
