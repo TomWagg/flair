@@ -41,21 +41,29 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
                      out_path="/gscratch/dirac/flair/cvz/", cpu_count=10)
     """
     lc = None
-    file_exists = False
-    file_keys = None
+    flare_mask = None
+    mu, variance = None, None
 
     file_name = out_path + f"{tic}_{sector_ind}.h5"
+    file_exists = isfile(file_name)
+    file_keys = None
 
     logger = logging.getLogger("flair")
 
     # skip creating the lightcurve and identifying flares if the file already exists
-    if isfile(file_name):
+    if file_exists:
         logger.info(f"File already exists for TIC {tic} in sector n={sector_ind}")
-        file_exists = True
         with h5.File(file_name, "r") as f:
-            if "lc" in f:
+            file_keys = f.keys()
+            if "lc" in file_keys:
                 lc = lk.LightCurve(time=f["lc/time"][:], flux=f["lc/flux"][:], flux_err=f["lc/flux_err"][:])
+
+            if "flare_mask" in f["lc"]:
                 flare_mask = f["lc/flare_mask"][:]
+
+            if "gp":
+                mu = f["gp/mu"][:]
+                variance = f["gp/variance"][:]
 
     # if the lightcurve doesn't exist, download it and identify flares
     if lc is None:
@@ -66,15 +74,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
         # download the lightcurve
         lc = flair.lightcurve.get_lightcurve(target=tic, mission='TESS', author='SPOC', ind=sector_ind)
 
-        logger.info(f"Identifying flares for TIC {tic} in sector n={sector_ind}")
-        
-        # setup the CNN and models
-        cnn, models = flair.flares.prep_stella('../data')
-        
-        # predict the flares and create a mask
-        avg_pred = flair.flares.get_stella_predictions(cnn=cnn, models=models, lc=lc)
-        flare_mask, flare_starts, flare_ends = flair.flares.get_flares(flare_prob=avg_pred, min_flare_points=3,
-                                                                       merge_absolute=2, merge_relative=0.2)
+        print(lc)
         
         # CHECKPOINT 1: save the lightcurve and flare mask
         with h5.File(file_name, "w") as f:
@@ -83,22 +83,33 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
             g.create_dataset("time", data=lc.time)
             g.create_dataset("flux", data=lc.flux)
             g.create_dataset("flux_err", data=lc.flux_err)
+
+
+    if flare_mask is None:
+        logger.info(f"Identifying flares for TIC {tic} in sector n={sector_ind}")
+        
+        # setup the CNN and models
+        cnn, models = flair.flares.prep_stella(out_path)
+        
+        # predict the flares and create a mask
+        avg_pred = flair.flares.get_stella_predictions(cnn=cnn, models=models, lc=lc)
+        flare_mask, flare_starts, flare_ends = flair.flares.get_flares(flare_prob=avg_pred, min_flare_points=3,
+                                                                       merge_absolute=2, merge_relative=0.2)
+
+        # CHECKPOINT 2: save the lightcurve and flare mask
+        with h5.File(file_name, "a") as f:
+            g = f["lc"]
             g.create_dataset("flare_mask", data=flare_mask)
 
-    if file_exists and "gp" in file_keys:
-        logger.info(f"GP already exists for TIC {tic} in sector n={sector_ind}")
-        with h5.File(file_name, "r") as f:
-            mu = f["lc/mu"][:]
-            variance = f["lc/variance"][:]
-    else:
+    if mu is None or variance is None:
         logger.info(f"Fitting GP to lightcurve for TIC {tic} in sector n={sector_ind}")
         # fit the GP to the lightcurve
         opt_gp = flair.gp.fit_GP(lc, flare_mask)
         mu, variance = opt_gp.predict(y=lc.flux.value[~flare_mask], t=lc.time.value, return_var=True)
 
-        # CHECKPOINT 2: save the GP mean and variance
+        # CHECKPOINT 3: save the GP mean and variance
         with h5.File(file_name, "a") as f:
-            g = f["lc"]
+            g = f.create_group("gp")
             g.create_dataset("mu", data=mu)
             g.create_dataset("variance", data=variance)
 
