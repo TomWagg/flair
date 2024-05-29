@@ -2,7 +2,7 @@
 ## Job Name
 #SBATCH --job-name=flair-cvz
 #SBATCH --account=astro
-#SBATCH --partition=astro
+#SBATCH --partition=ckpt
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=4
 #SBATCH --time=0:30:00
@@ -19,8 +19,9 @@ source ~/.bashrc
 module load anaconda3_5.3
 
 conda activate /gscratch/dirac/flair/conda_env
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/gscratch/dirac/flair/conda_env/lib
 
-LK_CACHE_PATH=/gscratch/astro/wagg/radius-valley/slurm/input/example_systems.txt
+LK_CACHE_PATH=/gscratch/scrubbed/flair/
 SCRIPT_PATH=/gscratch/dirac/flair/pipeline/cvz.py
 OUTPUT_PATH=/gscratch/dirac/flair/output/
 

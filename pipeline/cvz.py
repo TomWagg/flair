@@ -67,7 +67,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
         # predict the flares and create a mask
         avg_pred = flair.flares.get_stella_predictions(cnn=cnn, models=models, lc=lc)
         flare_mask, flare_starts, flare_ends = flair.flares.get_flares(flare_prob=avg_pred, min_flare_points=3,
-                                                                    merge_absolute=2, merge_relative=0.2)
+                                                                       merge_absolute=2, merge_relative=0.2)
         
         # CHECKPOINT 1: save the lightcurve and flare mask
         with h5.File(out_path + f"{tic}_sector{lc.sector}.h5", "w") as f:
