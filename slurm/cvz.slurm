@@ -11,7 +11,7 @@
 #SBATCH -e /gscratch/dirac/flair/slurm/logs/cvz_%a_%A.err
 #SBATCH --chdir=/gscratch/dirac/flair/pipeline
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=tomwagg@uw.edu          <--- CHANGE THIS TO YOUR EMAIL!!!
+#SBATCH --mail-user=tomwagg@uw.edu          ## <--- CHANGE THIS TO YOUR EMAIL!!!
 #SBATCH --export=all
 
 # we probably only need one of these two lines, may need to delete one eventually?
