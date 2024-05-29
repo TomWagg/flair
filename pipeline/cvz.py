@@ -108,8 +108,6 @@ def main():
     parser = argparse.ArgumentParser(description='Run CVZ pipeline on a specific sector')
     parser.add_argument('-t', '--tic', default="", type=str,
                         help='TIC ID of the star')
-    parser.add_argument('-s', '--sector', default="", type=str,
-                        help='ID of the sector to use (e.g. "14")')
     parser.add_argument('-i', '--sector-ind', default="", type=int,
                         help='Alternative to sector, the index of the sector to use (e.g. 2, meaning 2nd sector)')
     parser.add_argument('-ni', '--ninject', default=2000, type=int,
@@ -125,7 +123,7 @@ def main():
     args = parser.parse_args()
 
     # run the pipeline
-    cvz_pipeline(tic=args.tic, sector=args.sector, sector_ind=args.sector_ind, n_inject=args.ninject,
+    cvz_pipeline(tic=args.tic, sector_ind=args.sector_ind, n_inject=args.ninject,
                  n_repeat=args.nrepeat, lightkurve_path=args.lightkurve_path, out_path=args.out_path,
                  cpu_count=args.cpu_count)
 
