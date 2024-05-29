@@ -61,7 +61,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
             if "flare_mask" in f["lc"]:
                 flare_mask = f["lc/flare_mask"][:]
 
-            if "gp":
+            if "gp" in file_keys:
                 mu = f["gp/mu"][:]
                 variance = f["gp/variance"][:]
 
@@ -83,7 +83,6 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
             g.create_dataset("time", data=lc.time.value)
             g.create_dataset("flux", data=lc.flux.value)
             g.create_dataset("flux_err", data=lc.flux_err.value)
-
 
     if flare_mask is None:
         logger.info(f"Identifying flares for TIC {tic} in sector n={sector_ind}")
