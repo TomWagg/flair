@@ -6,19 +6,18 @@ import lightkurve as lk
 import argparse
 import h5py as h5
 from os.path import isfile
+import logging
 
-def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, sector=None, sector_ind=0):
+def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, sector_ind=0):
     """
     Perform the CVZ pipeline for a given TIC ID and sector.
 
     Parameters
     ----------
     tic : `str`
-        The TIC ID of the target star
-    sector : `str`
-        The sector number
+        The TIC ID of the target 
     sector_ind : `int`
-        The index of the sector to use (alternative to `sector`)
+        The index of the sector to use
     n_inject : `int`
         The number of injections to perform
     n_repeat : `int`
@@ -37,29 +36,37 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
 
     Examples
     --------
-    >>> cvz_pipeline(tic="tic272272592", sector='14', n_inject=2000, n_repeat=10, lightkurve_path="/gscratch/scrubbed/tomwagg/",
+    >>> cvz_pipeline(tic="tic272272592", sector_ind='0', n_inject=2000, n_repeat=10,
+                     lightkurve_path="/gscratch/scrubbed/tomwagg/",
                      out_path="/gscratch/dirac/flair/cvz/", cpu_count=10)
     """
     lc = None
     file_exists = False
     file_keys = None
 
+    file_name = out_path + f"{tic}_{sector_ind}.h5"
+
+    logger = logging.getLogger("flair")
+
     # skip creating the lightcurve and identifying flares if the file already exists
-    if isfile(out_path + f"{tic}_sector{sector}.h5"):
+    if isfile(file_name):
+        logger.info(f"File already exists for TIC {tic} in sector n={sector_ind}")
         file_exists = True
-        with h5.File(out_path + f"{tic}_sector{sector}.h5", "r") as f:
+        with h5.File(file_name, "r") as f:
             if "lc" in f:
                 lc = lk.LightCurve(time=f["lc/time"][:], flux=f["lc/flux"][:], flux_err=f["lc/flux_err"][:])
                 flare_mask = f["lc/flare_mask"][:]
 
     # if the lightcurve doesn't exist, download it and identify flares
     if lc is None:
+        logger.info(f"Downloading lightcurve for TIC {tic} in sector n={sector_ind}")
         # set the download cache directory
         lk.conf.cache_dir = lightkurve_path
 
         # download the lightcurve
-        lc = flair.lightcurve.get_lightcurve(target=tic, mission='TESS', author='SPOC',
-                                            sector=sector, ind=sector_ind)
+        lc = flair.lightcurve.get_lightcurve(target=tic, mission='TESS', author='SPOC', ind=sector_ind)
+
+        logger.info(f"Identifying flares for TIC {tic} in sector n={sector_ind}")
         
         # setup the CNN and models
         cnn, models = flair.flares.prep_stella('../data')
@@ -70,24 +77,27 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
                                                                        merge_absolute=2, merge_relative=0.2)
         
         # CHECKPOINT 1: save the lightcurve and flare mask
-        with h5.File(out_path + f"{tic}_sector{lc.sector}.h5", "w") as f:
+        with h5.File(file_name, "w") as f:
             g = f.create_group("lc")
+            g.attrs["sector"] = lc.sector
             g.create_dataset("time", data=lc.time)
             g.create_dataset("flux", data=lc.flux)
             g.create_dataset("flux_err", data=lc.flux_err)
             g.create_dataset("flare_mask", data=flare_mask)
 
     if file_exists and "gp" in file_keys:
-        with h5.File(out_path + f"{tic}_sector{lc.sector}.h5", "r") as f:
+        logger.info(f"GP already exists for TIC {tic} in sector n={sector_ind}")
+        with h5.File(file_name, "r") as f:
             mu = f["lc/mu"][:]
             variance = f["lc/variance"][:]
     else:
+        logger.info(f"Fitting GP to lightcurve for TIC {tic} in sector n={sector_ind}")
         # fit the GP to the lightcurve
         opt_gp = flair.gp.fit_GP(lc, flare_mask)
         mu, variance = opt_gp.predict(y=lc.flux.value[~flare_mask], t=lc.time.value, return_var=True)
 
         # CHECKPOINT 2: save the GP mean and variance
-        with h5.File(out_path + f"{tic}_sector{lc.sector}.h5", "a") as f:
+        with h5.File(file_name, "a") as f:
             g = f["lc"]
             g.create_dataset("mu", data=mu)
             g.create_dataset("variance", data=variance)
