@@ -80,9 +80,9 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
         with h5.File(file_name, "w") as f:
             g = f.create_group("lc")
             g.attrs["sector"] = lc.sector
-            g.create_dataset("time", data=lc.time)
-            g.create_dataset("flux", data=lc.flux)
-            g.create_dataset("flux_err", data=lc.flux_err)
+            g.create_dataset("time", data=lc.time.value)
+            g.create_dataset("flux", data=lc.flux.value)
+            g.create_dataset("flux_err", data=lc.flux_err.value)
 
 
     if flare_mask is None:
