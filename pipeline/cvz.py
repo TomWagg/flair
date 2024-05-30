@@ -91,8 +91,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         logger.info(f"Identifying flares for TIC {tic} in sector n={sector_ind}")
         
         # setup the CNN and models
-        cnn, models = flair.flares.prep_stella(download_path=join(cache_path, "stella_models"),
-                                               out_path=out_path)
+        cnn, models = flair.flares.prep_stella(download_path=None, out_path=out_path)
 
         print(cnn)
         print(models)
