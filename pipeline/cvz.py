@@ -5,10 +5,10 @@ import flair
 import lightkurve as lk
 import argparse
 import h5py as h5
-from os.path import isfile
+from os.path import isfile, join
 import logging
 
-def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, sector_ind=0):
+def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, sector_ind=0):
     """
     Perform the CVZ pipeline for a given TIC ID and sector.
 
@@ -22,7 +22,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
         The number of injections to perform
     n_repeat : `int`
         The number of times to repeat the pipeline
-    lightkurve_path : `str`
+    cache_path : `str`
         The path to a folder for downloading files from lightkurve
     out_path : `str`
         The output path for the pipeline results
@@ -37,7 +37,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
     Examples
     --------
     >>> cvz_pipeline(tic="tic272272592", sector_ind='0', n_inject=2000, n_repeat=10,
-                     lightkurve_path="/gscratch/scrubbed/tomwagg/",
+                     cache_path="/gscratch/scrubbed/tomwagg/",
                      out_path="/gscratch/dirac/flair/cvz/", cpu_count=10)
     """
     lc = None
@@ -69,7 +69,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
     if lc is None:
         logger.info(f"Downloading lightcurve for TIC {tic} in sector n={sector_ind}")
         # set the download cache directory
-        lk.conf.cache_dir = lightkurve_path
+        lk.conf.cache_dir = cache_path
 
         # download the lightcurve
         lc = flair.lightcurve.get_lightcurve(target=tic, mission='TESS', author='SPOC', ind=sector_ind)
@@ -78,17 +78,21 @@ def cvz_pipeline(tic, n_inject, n_repeat, lightkurve_path, out_path, cpu_count, 
         
         # CHECKPOINT 1: save the lightcurve and flare mask
         with h5.File(file_name, "w") as f:
+            print(f.keys())
             g = f.create_group("lc")
             g.attrs["sector"] = lc.sector
             g.create_dataset("time", data=lc.time.value)
             g.create_dataset("flux", data=lc.flux.value)
             g.create_dataset("flux_err", data=lc.flux_err.value)
 
+            print(f.keys())
+
     if flare_mask is None:
         logger.info(f"Identifying flares for TIC {tic} in sector n={sector_ind}")
         
         # setup the CNN and models
-        cnn, models = flair.flares.prep_stella(out_path, out_path)
+        cnn, models = flair.flares.prep_stella(download_path=join(cache_path, "stella_models"),
+                                               out_path=out_path)
 
         print(cnn)
         print(models)
@@ -128,17 +132,17 @@ def main():
                         help='Number of flares to inject')
     parser.add_argument('-nr', '--nrepeat', default=10, type=int,
                         help='Number of times to repeat each injected flare')
-    parser.add_argument('-l', '--lightkurve-path', default="/gscratch/scrubbed/tomwagg/", type=str,
+    parser.add_argument('-c', '--cache-path', default="/gscratch/scrubbed/tomwagg/", type=str,
                         help='Path to use for downloading lightkurve files')
     parser.add_argument('-o', '--out-path', default="/gscratch/dirac/flair/cvz/", type=str,
                         help='Path to use for output files')
-    parser.add_argument('-c', '--cpu-count', default=10, type=int,
+    parser.add_argument('-p', '--cpu-count', default=10, type=int,
                         help='How many CPUs to use for the injection and recovery tests')
     args = parser.parse_args()
 
     # run the pipeline
     cvz_pipeline(tic=args.tic, sector_ind=args.sector_ind, n_inject=args.ninject,
-                 n_repeat=args.nrepeat, lightkurve_path=args.lightkurve_path, out_path=args.out_path,
+                 n_repeat=args.nrepeat, cache_path=args.cache_path, out_path=args.out_path,
                  cpu_count=args.cpu_count)
 
 

@@ -19,8 +19,8 @@ source ~/.bashrc
 conda activate /gscratch/dirac/flair/conda/envs/flair
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/gscratch/dirac/flair/conda/lib
 
-LK_CACHE_PATH=/gscratch/scrubbed/flair/
+CACHE_PATH=/gscratch/scrubbed/flair/
 SCRIPT_PATH=/gscratch/dirac/flair/pipeline/cvz.py
 OUTPUT_PATH=/gscratch/dirac/flair/output/
 
-python $SCRIPT_PATH -o $OUTPUT_PATH -l $LK_CACHE_PATH -t tic272272592 -i 0
+python $SCRIPT_PATH -o $OUTPUT_PATH -c $CACHE_PATH -t tic272272592 -i 0 -p 4
