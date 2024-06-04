@@ -76,9 +76,40 @@ def plot_lc_with_probs(lc, avg_pred, fig=None, ax=None, show=True):
     ax.set(xlabel='Time [BJD-2457000]', ylabel='Normalized Flux')
     ax.legend()
 
+@plot_decorator
+def plot_lc_with_flares(lc, flare_mask, base_col="black", flare_col="tab:orange", 
+                        fig=None, ax=None, show=True, **kwargs):
+    """Plot a lightcurve with the flare probability as a colorbar.
+
+    Parameters
+    ----------
+    lc : :class:`lightkurve.lightcurve.TessLightCurve`
+        Lightcurve to plot
+    flare_mask : :class:`numpy.ndarray`
+        Boolean array with True for timesteps that are part of a flare
+    fig : :class:`matplotlib.figure.Figure`, optional
+        Figure to plot on, by default None (new figure created)
+    ax : :class:`matplotlib.axes.Axes`, optional
+        Axes to plot on, by default None (new axes created)
+    show : `bool`, optional
+        Whether to show the plot, by default True
+
+    Returns
+    -------
+    fig : :class:`matplotlib.figure.Figure`
+        Figure of plot
+    ax : :class:`matplotlib.axes.Axes`, optional
+        Axes of plot
+    """
+    colours = np.where(flare_mask, flare_col, base_col)
+    ax.scatter(lc.time.value, lc.flux.value / np.median(lc.flux.value),
+               c=colours, label=kwargs.pop("label", f'Sector {lc.sector}'), s=kwargs.pop("s", 10), **kwargs)
+    ax.set(xlabel='Time [BJD-2457000]', ylabel='Normalized Flux')
+    ax.legend()
+
 
 @plot_decorator
-def plot_lc_and_gp(lc, flare_mask, flare_starts, flare_ends, gp,
+def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None, gp=None,
                    mu=None, variance=None, time_lims=None, highlight_flares=True,
                    fig=None, ax=None, show=True):
     """Plot a lightcurve with flares masked and the GP prediction.
@@ -129,6 +160,8 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts, flare_ends, gp,
         
     # calculate the GP prediction if not provided
     if mu is None or variance is None:
+        if gp is None:
+            raise ValueError("GP object must be provided to calculate GP prediction.")
         mu, variance = gp.predict(y=lc.flux.value[~flare_mask],
                                   t=lc.time.value[time_mask],
                                   return_var=True)
@@ -147,6 +180,8 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts, flare_ends, gp,
 
     # highlight flares if desired
     if highlight_flares:
+        if flare_starts is None or flare_ends is None:
+            raise ValueError("Flare starts and ends must be provided to highlight flares.")
         for s, e in zip(flare_starts, flare_ends):
             start, end = lc.time.value[s], lc.time.value[e]
             if time_lims is None or (start > time_lims[0] and end < time_lims[1]):
