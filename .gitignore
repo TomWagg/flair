@@ -133,6 +133,7 @@ fort.99
 .vscode
 data/*
 !data/README.md
+!data/TESS_CVZ.csv
 dustmaps/*
 docs/api
 docs/auto_examples
