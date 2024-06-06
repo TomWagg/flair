@@ -22,7 +22,7 @@ with open("../data/TESS_CVZ.csv") as f:
 
         sectors = [str(i) for i in range(int(n_sector)) if not os.path.exists(f"../output/{tic}_{i}.h5")]
 
-        os.setenv("FLAIR_TIC_ID", tic)
+        os.environ["FLAIR_TIC_ID"] = tic
                 
         # submit the job
         os.system(f"sbatch --array={",".join(sectors)} cvz.slurm")
