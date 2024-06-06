@@ -20,19 +20,12 @@ with open("../data/TESS_CVZ.csv") as f:
         tic, _, _, _, n_sector = f.readline().split(",")
         tic = f"tic{tic}"
 
-        # for each of its sectors
-        for i in range(int(n_sector)):
+        sectors = [str(i) for i in range(int(n_sector)) if not os.path.exists(f"../output/{tic}_{i}.h5")]
 
-            # if we have not run it yet
-            if not os.path.exists(f"../output/{tic}_{i}.h5"):
+        os.setenv("FLAIR_TIC_ID", tic)
                 
-                # create a new slurm script that runs the pipeline
-                new_script = copy(template).replace("TICINSERT", tic).replace("SECTORINSERT", str(i))
-                with open(f"{tic}_{i}.slurm", "w") as f:
-                    f.write(new_script)
-                
-                # submit the job
-                os.system(f"sbatch {tic}_{i}.slurm")
+        # submit the job
+        os.system(f"sbatch --array={",".join(sectors)} cvz.slurm")
 
         # break early for testing
         if n_stars >= N_STAR_LIMIT:

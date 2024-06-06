@@ -1,14 +1,14 @@
 #!/bin/bash
 ## Job Name
-#SBATCH --job-name=cvz
+#SBATCH --job-name=cvz-flair
 #SBATCH --account=astro
 #SBATCH --partition=compute-bigmem
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=1:00:00
 #SBATCH --mem=10G
-#SBATCH -o /gscratch/dirac/flair/slurm/logs/cvz_TICINSERT_SECTORINSERT_%a_%A.out
-#SBATCH -e /gscratch/dirac/flair/slurm/logs/cvz_TICINSERT_SECTORINSERT_%a_%A.err
+#SBATCH -o /gscratch/dirac/flair/slurm/logs/cvz_%a_%A.out
+#SBATCH -e /gscratch/dirac/flair/slurm/logs/cvz_%a_%A.err
 #SBATCH --chdir=/gscratch/dirac/flair/pipeline
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=tomwagg@uw.edu          ## <--- CHANGE THIS TO YOUR EMAIL!!!
@@ -23,4 +23,6 @@ CACHE_PATH=/gscratch/scrubbed/flair/
 SCRIPT_PATH=/gscratch/dirac/flair/pipeline/cvz.py
 OUTPUT_PATH=/gscratch/dirac/flair/output/
 
-python $SCRIPT_PATH -o $OUTPUT_PATH -c $CACHE_PATH -t TICINSERT -i SECTORINSERT -p 1
+echo "Running on $(FLAIR_TIC_ID), sector $(SLURM_ARRAY_TASK_ID)"
+
+python $SCRIPT_PATH -o $OUTPUT_PATH -c $CACHE_PATH -t $FLAIR_TIC_ID -i $SLURM_ARRAY_TASK_ID -p 1
