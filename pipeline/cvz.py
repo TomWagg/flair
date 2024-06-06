@@ -196,8 +196,11 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
 
             # CHECKPOINT 5: save recovered flares one at a time
             with h5.File(file_name, "a") as f:
-                d = f["recovered"] if "recovered" in f.keys() else f.create_dataset("recovered")
-                d[:] = recovered
+                if "recovered" in f.keys():
+                    d = f["recovered"]
+                    d[i, j] = recovered[i, j]
+                else:
+                    d = f.create_dataset("recovered", data=recovered)
                 d.attrs["inject_index"] = (i, j)
 
     logger.info("All done!")
