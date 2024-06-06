@@ -209,9 +209,9 @@ def main():
                         help='TIC ID of the star')
     parser.add_argument('-i', '--sector-ind', default="", type=int,
                         help='Alternative to sector, the index of the sector to use (e.g. 2, meaning 2nd sector)')
-    parser.add_argument('-ni', '--ninject', default=2000, type=int,
+    parser.add_argument('-ni', '--ninject', default=20, type=int,
                         help='Number of flares to inject')
-    parser.add_argument('-nr', '--nrepeat', default=10, type=int,
+    parser.add_argument('-nr', '--nrepeat', default=25, type=int,
                         help='Number of times to repeat each injected flare')
     parser.add_argument('-c', '--cache-path', default="/gscratch/scrubbed/tomwagg/", type=str,
                         help='Path to use for downloading lightkurve files')
