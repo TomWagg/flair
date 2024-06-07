@@ -2,10 +2,10 @@
 ## Job Name
 #SBATCH --job-name=cvz-flair
 #SBATCH --account=astro
-#SBATCH --partition=compute-bigmem
+#SBATCH --partition=ckpt
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=1:00:00
+#SBATCH --time=2:00:00
 #SBATCH --mem=10G
 #SBATCH -o /gscratch/dirac/flair/slurm/logs/cvz_%a_%A.out
 #SBATCH -e /gscratch/dirac/flair/slurm/logs/cvz_%a_%A.err
