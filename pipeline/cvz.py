@@ -50,7 +50,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
     flare_mask = None
     mu, variance = None, None
     amps, fwhms, insert_points = None, None, None
-    recovered, inject_index = None, (0, 0)
+    recovered, inject_index = None, 0
 
     # setup the file name and check if it already exists
     file_name = out_path + f"{tic}_{sector_ind}.h5"
@@ -180,28 +180,28 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
     if recovered is None:
         recovered = np.zeros((n_inject, n_repeat), dtype=bool)
     
-    i_start, j_start = inject_index
-    for i in range(i_start, n_inject):
-        for j in range(j_start if i == i_start else 0, n_repeat):
-            logger.info(f"Performing injection for flare {(i, j)}")
-            recovered[i, j] = flair.inject.injection_test(time=lc.time.value, 
-                                                          flux=lc.flux.value,
-                                                          flux_err=lc.flux_err.value,
-                                                          cnn=cnn,
-                                                          models=models,
-                                                          flare_mask=flare_mask,
-                                                          amp=amps[i],
-                                                          fwhm=fwhms[i],
-                                                          insertion_point=insert_points[i, j])
+    i_start = inject_index
 
-            # CHECKPOINT 5: save recovered flares one at a time
-            with h5.File(file_name, "a") as f:
-                if "recovered" in f.keys():
-                    d = f["recovered"]
-                    d[i, j] = recovered[i, j]
-                else:
-                    d = f.create_dataset("recovered", data=recovered)
-                d.attrs["inject_index"] = (i, j)
+    for i in range(i_start, n_inject):
+        logger.info(f"Performing injection for flare {(i)}")
+        recovered[i] = flair.inject.injection_test(time=lc.time.value, 
+                                                      flux=lc.flux.value,
+                                                      flux_err=lc.flux_err.value,
+                                                      cnn=cnn,
+                                                      models=models,
+                                                      flare_mask=flare_mask,
+                                                      amp=amps,
+                                                      fwhm=fwhms,
+                                                      insertion_point=insert_points[i])
+
+        # CHECKPOINT 5: save recovered flares one at a time
+        with h5.File(file_name, "a") as f:
+            if "recovered" in f.keys():
+                d = f["recovered"]
+                d[i] = recovered[i]
+            else:
+                d = f.create_dataset("recovered", data=recovered)
+            d.attrs["inject_index"] = i
 
     logger.info("All done!")
 

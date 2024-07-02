@@ -144,3 +144,5 @@ cov.xml
 *.npy
 *.gz
 *.xml
+*.fits
+output/plots

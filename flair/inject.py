@@ -53,7 +53,7 @@ def is_recovered(cnn, models, time, flux, flux_err, timestep, threshold=0.3, min
         Flux values for the lightcurve
     flux_err : :class:`numpy.ndarray`
         Flux error values for the lightcurve
-    timestep : `int`
+    timestep : `array`
         Timestep to check for the flare at
     threshold : `float`, optional
         Threshold probability required, by default 0.3
@@ -67,7 +67,14 @@ def is_recovered(cnn, models, time, flux, flux_err, timestep, threshold=0.3, min
     """
     avg_pred = flares.get_stella_predictions(cnn=cnn, models=models, time=time, flux=flux, flux_err=flux_err)
     offset = (min_flare_points - 1) // 2
-    return np.all(avg_pred[timestep - offset:timestep + offset] > threshold)
+    
+    recovered = np.zeros(len(timestep)).astype('bool')
+    
+    for i in range(len(timestep)):
+        recovered[i] = np.all(avg_pred[timestep[i] - offset:timestep[i] + offset] > threshold)
+
+    
+    return recovered
 
 def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, insertion_point):
     """Test the recovery of an injected flare.
@@ -86,10 +93,12 @@ def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, ins
         List of trained stellar models
     flare_mask : :class:`numpy.ndarray`
         Boolean array with True for timesteps that are part of a flare
-    amp : `float`
-        Amplitude of the flare
-    fwhm : `float`
-        Full Width at Half Maximum of the flare
+    amp : `array`
+        Amplitude of the flares to be injected
+    fwhm : `array`
+        Full Width at Half Maximum of the flares to be injected
+    insertion_point : `array`
+        Points at which to insert the flares
     n_end_avoid : `int`, optional
         Number of timesteps to avoid at the start and end of the lightcurve, by default 5
 
@@ -99,8 +108,21 @@ def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, ins
         Whether the injected flare was recovered
     """
 
-    adjusted_flux = inject_flare(time=time, flux=flux, amp=amp, fwhm=fwhm,
-                                 insert_timestep=insertion_point, flare_mask=flare_mask)
+    print(flux.shape)
+    print(amp.shape)
+    print(fwhm.shape)
+    print(insertion_point.shape)
+
+    for i in range(len(amp)):
+        if i ==0:
+            adjusted_flux = inject_flare(time=time, flux=flux, amp=amp[i], fwhm=fwhm[i],
+                                     insert_timestep=insertion_point[i], flare_mask=flare_mask)
+        else:
+            adjusted_flux = inject_flare(time=time, flux=adjusted_flux, amp=amp[i], fwhm=fwhm[i],
+                                     insert_timestep=insertion_point[i], flare_mask=flare_mask)
+        print(adjusted_flux.shape)
+    
+    
     return is_recovered(cnn=cnn, models=models, time=time, flux=adjusted_flux, flux_err=flux_err,
                         timestep=insertion_point)
 
