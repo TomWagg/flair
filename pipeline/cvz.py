@@ -154,6 +154,18 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
                                                  highlight_flares=False, show=False)
         fig.savefig(join(out_path, "plots", f"{tic}_{sector_ind}_gp.png"))
 
+        # fit Equivalent durations 
+        eds= flair.flares.calc_equivalent_durations(lc, flare_starts=flare_starts, flare_ends=flare_ends,
+                                                    mu=mu)
+
+        # CHECKPOINT 4: save the EDs with flare starts and stops
+        with h5.File(file_name, "a") as f:
+            g = f.create_group("flares")
+            g.create_dataset("start_times", data=flare_starts)
+            g.create_dataset("stop_times", data=flare_ends)
+            g.create_dataset("equivalent durations", data=eds)
+
+
     if amps is None or fwhms is None or insert_points is None:
         logger.info("Drawing injected flares")
 
@@ -170,7 +182,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         not_flare_inds = all_inds[~flare_mask & (all_inds > n_end_avoid) & (all_inds < len(lc) - n_end_avoid)]
         insert_points = np.random.choice(not_flare_inds, size=(n_inject, n_repeat))
 
-        # CHECKPOINT 4: save the injected flares
+        # CHECKPOINT 5: save the injected flares
         with h5.File(file_name, "a") as f:
             g = f.create_group("injections")
             g.create_dataset("amps", data=amps)
@@ -194,7 +206,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
                                                       fwhm=fwhms,
                                                       insertion_point=insert_points[i])
 
-        # CHECKPOINT 5: save recovered flares one at a time
+        # CHECKPOINT 6: save recovered flares one at a time
         with h5.File(file_name, "a") as f:
             if "recovered" in f.keys():
                 d = f["recovered"]
