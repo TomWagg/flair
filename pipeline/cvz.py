@@ -47,7 +47,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
     """
     # setup up variables that are checkpointed
     lc = None
-    flare_mask = None
+    flare_mask, flare_starts, flare_ends = None, None, None
     mu, variance = None, None
     amps, fwhms, insert_points = None, None, None
     recovered, inject_index = None, 0
@@ -85,6 +85,8 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
             # read the flare mask if it exists
             if "flare_mask" in f["lc"]:
                 flare_mask = f["lc/flare_mask"][:]
+            if "flares" in file_keys:
+                flare_starts, flare_ends = f["flares/start_times"][:], f["flares/stop_times"][:]
 
             # read the GP mean and variance if it exists
             if "gp" in file_keys:
@@ -131,6 +133,10 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         with h5.File(file_name, "a") as f:
             g = f["lc"]
             g.create_dataset("flare_mask", data=flare_mask)
+        with h5.File(file_name, "a") as f:
+            g = f.create_group("flares")
+            g.create_dataset("start_times", data=flare_starts)
+            g.create_dataset("stop_times", data=flare_ends)
 
         # plot the lightcurve with flares marked
         fig, _ = flair.plot.plot_lc_with_flares(lc, flare_mask, show=False)
@@ -160,9 +166,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
 
         # CHECKPOINT 4: save the EDs with flare starts and stops
         with h5.File(file_name, "a") as f:
-            g = f.create_group("flares")
-            g.create_dataset("start_times", data=flare_starts)
-            g.create_dataset("stop_times", data=flare_ends)
+            g = f["flares"]
             g.create_dataset("equivalent durations", data=eds)
 
 
