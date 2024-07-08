@@ -145,4 +145,5 @@ cov.xml
 *.gz
 *.xml
 *.fits
+*.err
 output/plots
