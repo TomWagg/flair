@@ -5,7 +5,7 @@ with open("cvz.slurm") as f:
     template = f.read()
 
 n_stars = 0
-N_STAR_LIMIT = 10
+N_STAR_LIMIT = 2
 
 with open("../data/TESS_CVZ.csv") as f:
     # go through the CVZ file
@@ -19,7 +19,7 @@ with open("../data/TESS_CVZ.csv") as f:
         tic, _, _, _, n_sector = line.split(",")
         tic = f"tic{tic}"
 
-        sectors = [str(i) for i in range(int(n_sector)) if not os.path.exists(f"../output/{tic}_{i}.h5")]
+        sectors = [str(i) for i in range(int(n_sector))]
 
         os.environ["FLAIR_TIC_ID"] = tic
                 
