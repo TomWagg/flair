@@ -175,7 +175,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
 
         # flare amplitudes are set by the typical uncertainty in the lightcurve
         norm_median_error = (np.median(lc.flux_err.value) / np.median(lc.flux.value)).tolist()
-        amps = np.geomspace(norm_median_error, 10 * norm_median_error, n_inject)
+        amps = np.geomspace(0.5*norm_median_error, 50 * norm_median_error, n_inject)
 
         # simple choice for FWHM in days
         fwhms = np.linspace(1, 20, n_inject) / 1440
@@ -228,7 +228,7 @@ def main():
                         help='TIC ID of the star')
     parser.add_argument('-i', '--sector-ind', default="", type=int,
                         help='Alternative to sector, the index of the sector to use (e.g. 2, meaning 2nd sector)')
-    parser.add_argument('-ni', '--ninject', default=20, type=int,
+    parser.add_argument('-ni', '--ninject', default=25, type=int,
                         help='Number of flares to inject')
     parser.add_argument('-nr', '--nrepeat', default=25, type=int,
                         help='Number of times to repeat each injected flare')
