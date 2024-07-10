@@ -184,7 +184,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         all_inds = np.arange(len(lc))
         n_end_avoid = 5
         not_flare_inds = all_inds[~flare_mask & (all_inds > n_end_avoid) & (all_inds < len(lc) - n_end_avoid)]
-        insert_points = np.random.choice(not_flare_inds, size=(n_inject, n_repeat))
+        insert_points = np.random.choice(not_flare_inds, size=(n_repeat, n_inject))
 
         # CHECKPOINT 5: save the injected flares
         with h5.File(file_name, "a") as f:
@@ -194,11 +194,13 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
             g.create_dataset("insert_points", data=insert_points)
 
     if recovered is None:
-        recovered = np.zeros((n_inject, n_repeat), dtype=bool)
+        recovered = np.zeros((n_repeat, n_inject), dtype=bool)
     
     i_start = inject_index
 
-    for i in range(i_start, n_inject):
+    # recovered is a 2D, the len of each row is the number of flares injected
+    # the len of each column is the number of times the injection was repeated
+    for i in range(i_start, n_repeat):
         logger.info(f"Performing injection for flare {(i)}")
         recovered[i] = flair.inject.injection_test(time=lc.time.value, 
                                                       flux=lc.flux.value,
