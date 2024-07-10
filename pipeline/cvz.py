@@ -167,7 +167,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         # CHECKPOINT 4: save the EDs with flare starts and stops
         with h5.File(file_name, "a") as f:
             g = f["flares"]
-            g.create_dataset("equivalent durations", data=eds)
+            g.create_dataset("equivalent_durations", data=eds)
 
 
     if amps is None or fwhms is None or insert_points is None:
