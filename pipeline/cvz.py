@@ -175,9 +175,10 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
 
         # flare amplitudes are set by the typical uncertainty in the lightcurve
         norm_median_error = (np.median(lc.flux_err.value) / np.median(lc.flux.value)).tolist()
-        amps = np.geomspace(0.25*norm_median_error, 20 * norm_median_error, n_inject)
+        amps = np.geomspace(0.5*norm_median_error, 25 * norm_median_error, n_inject)
 
         # simple choice for FWHM in days
+        # Parameters are derived to match Lupita's flare sample
         fwhms = np.random.lognormal(mean=0.002, sigma=0.7, size=n_inject)
 
         # draw random injection times
