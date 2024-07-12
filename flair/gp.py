@@ -49,7 +49,7 @@ def fit_GP(lc, flare_mask):
 
     # Setup the GP
     gp = celerite2.GaussianProcess(kernel, mean=0.0)
-    gp.compute(x, yerr=yerr)
+    gp.compute(x, yerr=y_err)
     
     initial_params = [0.0, 0.0, 0.0, np.log(10.0), 0.0, np.log(5.0), np.log(0.01)]
     set_params(initial_params, gp)
