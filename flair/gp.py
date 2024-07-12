@@ -1,4 +1,5 @@
 import celerite2
+from celerite2 import terms
 from scipy.optimize import minimize
 import numpy as np
 
