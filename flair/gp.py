@@ -39,7 +39,17 @@ def fit_GP(lc, flare_mask):
         return -gp.log_likelihood(y)
 
     # initialize the GP and optimize
-    gp = celerite2.GaussianProcess(kernel=celerite2.terms.SHOTerm(sigma=1.0, rho=1.0, tau=10.0), mean=0.0)
+    # Quasi-periodic term
+    term1 = terms.SHOTerm(sigma=1.0, rho=1.0, tau=10.0)
+
+    # Non-periodic component
+    term2 = terms.SHOTerm(sigma=1.0, rho=5.0, Q=0.25)
+    kernel = term1 + term2
+
+    # Setup the GP
+    gp = celerite2.GaussianProcess(kernel, mean=0.0)
+    gp.compute(x, yerr=yerr)
+    
     initial_params = [0.0, 0.0, 0.0, np.log(10.0), 0.0, np.log(5.0), np.log(0.01)]
     set_params(initial_params, gp)
     soln = minimize(neg_log_like, initial_params, method="L-BFGS-B", args=(gp,))
