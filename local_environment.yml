@@ -13,12 +13,12 @@ dependencies:
   - ipykernel
   - ipython
   - json5
-  - jupyter=1.0.0=py311hecd8cb5_8
-  - jupyterlab=3.6.3=py311hecd8cb5_0
+  - jupyter==1.0.0
+  - jupyterlab==3.6.3
   - matplotlib
   - mkl
   - mysql
-  - notebook=6.5.4=py311hecd8cb5_1
+  - notebook==6.5.4
   - numba
   - numpy
   - pandas
@@ -26,7 +26,7 @@ dependencies:
   - pip
   - psutil
   - pyqt
-  - python=3.11.5=hf27a42d_0
+  - python==3.11.5
   - scipy
   - seaborn
   - setuptools
