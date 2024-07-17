@@ -115,9 +115,7 @@ def injection_test(time, flux, flux_err, cnn, models, flare_mask, amp, fwhm, ins
         else:
             adjusted_flux = inject_flare(time=time, flux=adjusted_flux, amp=amp[i], fwhm=fwhm[i],
                                      insert_timestep=insertion_point[i], flare_mask=flare_mask)
-        print(adjusted_flux.shape)
-    
-    
+        
     return is_recovered(cnn=cnn, models=models, time=time, flux=adjusted_flux, flux_err=flux_err,
                         timestep=insertion_point)
 
