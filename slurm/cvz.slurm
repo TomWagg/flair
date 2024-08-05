@@ -25,4 +25,4 @@ OUTPUT_PATH=/gscratch/dirac/flair/output/
 
 echo "Running on ${FLAIR_TIC_ID}, sector ${SLURM_ARRAY_TASK_ID}"
 
-# python $SCRIPT_PATH -o $OUTPUT_PATH -c $CACHE_PATH -t $FLAIR_TIC_ID -i $SLURM_ARRAY_TASK_ID -p 1
+python $SCRIPT_PATH -o $OUTPUT_PATH -c $CACHE_PATH -t $FLAIR_TIC_ID -i $SLURM_ARRAY_TASK_ID -p 1

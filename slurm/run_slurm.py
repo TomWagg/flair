@@ -1,9 +1,5 @@
 import os
 
-# read in the template slurm script
-with open("template.slurm") as f:
-    template = f.read()
-
 n_stars = 0
 N_STAR_LIMIT = 1
 
@@ -12,27 +8,16 @@ with open("../data/TESS_CVZ.csv") as f:
     for line in f:
         if line.startswith("TICID"):
             continue
-
         n_stars += 1
             
         # read in the star
         tic, _, _, _, n_sector = line.split(",")
         tic = f"tic{tic}"
-
-        print(n_sector)
-        sectors = [str(i) for i in range(int(n_sector))]# if not os.path.exists(f"../output/{tic}_{i}.h5")]
-        print(sectors)
-        sectors = [sectors[0]]
-
-        temp_slurm = template.replace("FLAIR_TIC_ID", tic)
-        with open("temp.slurm", "w") as temp:
-            temp.write(temp_slurm)
-
+        sectors = [str(i) for i in range(int(n_sector))]
+        os.environ["FLAIR_TIC_ID"] = tic
+                
         # submit the job
-        os.system(f"sbatch --array={','.join(sectors)} temp.slurm")
-
-        os.remove("temp.slurm")
-
+        os.system(f"sbatch --array={','.join(sectors)} cvz.slurm")
         # break early for testing
         if n_stars >= N_STAR_LIMIT:
             break
