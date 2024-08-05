@@ -16,7 +16,7 @@
 
 source ~/.bashrc
 
-conda activate /gscratch/astro/wainer/miniconda3/envs/flair
+conda activate /gscratch/scrubbed/tobinw/miniconda3/envs/flair
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/gscratch/astro/miniconda/lib
 
 CACHE_PATH=/gscratch/scrubbed/tobinw/flair/
