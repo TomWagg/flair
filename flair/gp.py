@@ -28,7 +28,6 @@ def fit_GP(lc, flare_mask):
     def set_params(params, gp):
         gp.mean = params[0]
         theta = np.exp(params[1:])
-        print(theta)
         if theta[1] <= 0.0 or theta[3] <= 0.0 or theta[4] <= 0.0 or np.isinf(theta[1]) or np.isinf(theta[3]) or np.isinf(theta[4]) or theta[1] >= 10**100 or theta[3] >= 10**100 or theta[4] >= 10**100:
             return gp, False
         gp.kernel = celerite2.terms.SHOTerm(
