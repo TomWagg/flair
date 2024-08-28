@@ -51,9 +51,23 @@ def fit_GP(lc, flare_mask):
     gp = celerite2.GaussianProcess(kernel, mean=0.0)
     gp.compute(x, yerr=y_err)
     
-    initial_params = [np.log(0.01), np.log(0.01), np.log(0.01), np.log(10.0), np.log(0.01), np.log(5.0), np.log(0.01)]
+    initial_params = [0, 0, 0, np.log(10.0), 0, np.log(5.0), np.log(0.01)]
     set_params(initial_params, gp)
-    soln = minimize(neg_log_like, initial_params, method="L-BFGS-B", args=(gp,))
+
+    # Define bounds: (lower_bound, upper_bound) or (None, None) for no bounds
+    bounds = [
+        (None, None),  # No bounds for the first parameter #parameter[0] 
+        (-10, 0),  # Lower bound for the second parameter #theta[0]
+        (-10, 0),  # Lower bound for the third parameter #theta[1]
+        (-10, 10),  # No bounds for the fourth parameter #theta[2]
+        (-10, 10),     # Lower bound for the fifth parameter #theta[3]
+        (-10, 10),     # Lower bound for the sixth parameter #theta[4]
+        (-10, None)   # Lower bound for the seventh parameter #theta[5]
+        ]
+
+    soln = minimize(neg_log_like, initial_params, method="Nelder-Mead", args=(gp,),
+                    bounds=bounds)
     opt_gp = set_params(soln.x, gp)
     
     return opt_gp
+
