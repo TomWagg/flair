@@ -19,9 +19,8 @@ with open("../data/TESS_CVZ.csv") as f:
         tic, _, _, _, n_sector = line.split(",")
         tic = f"tic{tic}"
 
-        print(n_sector)
         sectors = [str(i) for i in range(int(n_sector))]# if not os.path.exists(f"../output/{tic}_{i}.h5")]
-        print(sectors)
+
         sectors = [sectors[0]]
 
         temp_slurm = template.replace("FLAIR_TIC_ID", tic)
