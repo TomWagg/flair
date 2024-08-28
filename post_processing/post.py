@@ -618,9 +618,9 @@ def post_process(tic_id, output_dir, out_path, show=False):
 
     with h5py.File(file_name, 'w') as h5:
         dt = h5py.special_dtype(vlen=np.dtype('float64'))
-        h5.create_group('flares')
+        g = h5.create_group('flares')
         # Create dataset with variable-length data type
-        dset = h5.create_dataset('flare_starts', (len(flare_starts),), dtype=dt)
+        dset = g.create_dataset('flare_starts', (len(flare_starts),), dtype=dt)
         # Write each sublist to the dataset
         for i, sublist in enumerate(flare_starts):
             dset[i] = sublist
@@ -636,37 +636,37 @@ def post_process(tic_id, output_dir, out_path, show=False):
             dataset_name = f'sector_{i}_lc'
             table.write(tables_group, path=dataset_name, format='hdf5')
 
-        h5.create_group('FFD')
-        dset = h5.create_dataset('FFD_eds', (len(FFD_eds),), dtype=dt)
+        g_f = h5.create_group('FFD')
+        dset = g_f.create_dataset('FFD_eds', (len(FFD_eds),), dtype=dt)
         for i, sublist in enumerate(FFD_eds):
             dset[i] = sublist
 
-        dset = h5.create_dataset('raw_rates', (len(raw_rates),), dtype=dt)
+        dset = g_f.create_dataset('raw_rates', (len(raw_rates),), dtype=dt)
         for i, sublist in enumerate(raw_rates):
             dset[i] = sublist
 
-        dset = h5.create_dataset('raw_rate_err', (len(raw_rate_err),), dtype=dt)
+        dset = g_f.create_dataset('raw_rate_err', (len(raw_rate_err),), dtype=dt)
         for i, sublist in enumerate(raw_rate_err):
             dset[i] = sublist
 
-        dset = h5.create_dataset('corrected_rates', (len(corrected_rates),), dtype=dt)
+        dset = g_f.create_dataset('corrected_rates', (len(corrected_rates),), dtype=dt)
         for i, sublist in enumerate(corrected_rates):
             dset[i] = sublist
 
-        dset = h5.create_dataset('corrected_eds', (len(corrected_eds),), dtype=dt)
+        dset = g_f.create_dataset('corrected_eds', (len(corrected_eds),), dtype=dt)
         for i, sublist in enumerate(corrected_eds):
             dset[i] = sublist
 
-        dset = h5.create_dataset('rate_err_above_lim', (len(rate_err_above_lim),), dtype=dt)
+        dset = g_f.create_dataset('rate_err_above_lim', (len(rate_err_above_lim),), dtype=dt)
         for i, sublist in enumerate(rate_err_above_lim):
             dset[i] = sublist
-        h5.create_dataset('full_sample_slope', data=full_sample_slope)
+        g_f.create_dataset('full_sample_slope', data=full_sample_slope)
 
-        h5.create_group('metrics')
-        h5.create_dataset('fifty_percent_completeness_limits', data=fifty_percent_complentess_limits)
-        h5.create_dataset('comp_function_params', data=comp_function_params)
-        h5.create_dataset('sector_beta_values', data=sector_beta_values)
-        h5.create_dataset('F_Flare_F_Bol', data=F_Flare_F_Bol)
+        g_m = h5.create_group('metrics')
+        g_m .create_dataset('fifty_percent_completeness_limits', data=fifty_percent_complentess_limits)
+        g_m .create_dataset('comp_function_params', data=comp_function_params)
+        g_m .create_dataset('sector_beta_values', data=sector_beta_values)
+        g_m .create_dataset('F_Flare_F_Bol', data=F_Flare_F_Bol)
 
 
     print(f"All done with {tic_id}! Check out the final output file for the results")
