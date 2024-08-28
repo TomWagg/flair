@@ -89,6 +89,8 @@ def FFD(ED, TOTEXP=1., Lum=30., fluxerr=0., dur=[], logY=True, est_comp=False):
     # compute X uncertainties for FFD
     if len(dur)==len(ffd_x):
 
+        ss = ss.astype(int)
+        dur = np.array(dur)
         # assume relative flux error = 1/SN
         S2N = 1/fluxerr
         # based on Equivalent Width error
