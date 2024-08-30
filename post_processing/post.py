@@ -5,12 +5,12 @@ import h5py
 import os
 import fnmatch
 import h5py
-import lupita
+import flair
 import flair.flares as flares
 from scipy.integrate import trapezoid
 import astropy.units as u
 from scipy.optimize import curve_fit
-from jim import FFD
+from flair.jim import FFD
 
 import matplotlib.colors as mcol
 import matplotlib.cm as cm
