@@ -714,14 +714,30 @@ def post_process(tic_id, output_dir, out_path, show=False):
 
     print(f"All done with {tic_id}! Check out the final output file for the results")
 
+
+def find_tic_ids(output_dir):
+    """
+    Find the TIC IDs of the stars in the output directory.
+    
+    Parameters:
+    - output_dir: The directory containing the output files.
+    
+    Returns:
+    - tic_ids: List of the TIC IDs of the stars in the output directory.
+    """
+    tic_ids = []
+    for file in os.listdir(output_dir):
+        if fnmatch.fnmatch(file, '*.h5'):
+            tic_id = file.split('_')[0]
+            if tic_id not in tic_ids:
+                tic_ids.append(tic_id)
+    return tic_ids
    
-
-
 # setup argparse
 def main():
     parser = argparse.ArgumentParser(description='Run Post processing pipeline on a a CVZ star')
-    parser.add_argument('-t', '--tic', default="", type=str,
-                        help='TIC ID of the star')
+    # parser.add_argument('-t', '--tic', default="", type=str, nargs="+",
+    #                     help='TIC ID of the star')
     
     parser.add_argument('-p', '--path', default=".", type=str,
                         help='Output path of the data to read in')
@@ -734,8 +750,11 @@ def main():
 
     args = parser.parse_args()
 
-    # run the pipeline
-    post_process(tic_id=args.tic, output_dir=args.path, out_path=args.write_path, show=args.show==1)
+    tic_ids = find_tic_ids(args.path)
+    # loop over tic IDs
+    for tic in tic_ids:
+        # run the pipeline
+        post_process(tic_id=tic, output_dir=args.path, out_path=args.write_path, show=args.show==1)
 
 if __name__ == "__main__":
     main()
