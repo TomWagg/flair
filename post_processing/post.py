@@ -489,7 +489,7 @@ def post_process(tic_id, output_dir, out_path, show=False):
     for i in range(sectors_available):
         list_of_file_names.append(f'{output_dir}{tic_id}_{i}.h5')
 
-    combine_sector_files(list_of_file_names, f'{tic_id}_sector_combined.h5')
+    combine_sector_files(list_of_file_names, f'{output_dir}{tic_id}_sector_combined.h5')
 
     logger.info('Combined all sectors into single file')
 
@@ -639,7 +639,18 @@ def post_process(tic_id, output_dir, out_path, show=False):
         # Write each sublist to the dataset
         for i, sublist in enumerate(flare_ends):
             dset[i] = sublist
+
+        source_file_path = f'{output_dir}{tic_id}_sector_combined.h5'
+        sector_flare_masks = []
+        with h5py.File(source_file_path, 'r') as source_file:
+            for sector_name in source_file.keys():
+                sector_flare_masks.append(source_file[sector_name]['lc']['flare_mask'][:])
         
+        dset = g.create_dataset('flare_masks', (len(sector_flare_masks),), dtype=dt)
+        # Write each sublist to the dataset
+        for i, sublist in enumerate(sector_flare_masks):
+            dset[i] = sublist
+                
         # Create a group named 'lcs'
         tables_group = h5.create_group('lcs')
         for i, table in enumerate(sector_lcs):
@@ -673,11 +684,32 @@ def post_process(tic_id, output_dir, out_path, show=False):
         g_f.create_dataset('full_sample_slope', data=full_sample_slope)
 
         g_m = h5.create_group('metrics')
-        g_m .create_dataset('fifty_percent_completeness_limits', data=fifty_percent_complentess_limits)
-        g_m .create_dataset('comp_function_params', data=comp_function_params)
-        g_m .create_dataset('sector_beta_values', data=sector_beta_values)
-        g_m .create_dataset('F_Flare_F_Bol', data=F_Flare_F_Bol)
+        g_m.create_dataset('fifty_percent_completeness_limits', data=fifty_percent_complentess_limits)
+        g_m.create_dataset('comp_function_params', data=comp_function_params)
+        g_m.create_dataset('sector_beta_values', data=sector_beta_values)
+        g_m.create_dataset('F_Flare_F_Bol', data=F_Flare_F_Bol)
 
+
+        injection_recovery_group = h5.create_group('Injection_Recovery')
+        for i in range(len(recovered)):
+            sector_group = injection_recovery_group.create_group(f'sector_{i}')
+            sector_group.create_dataset('recovered', data=recovered[i])
+            sector_group.create_dataset('injected_eds', data=injected_eds[i])
+            sector_group.create_dataset('injected_amps', data=injected_amps[i])
+
+        # Open the source HDF5 file in read mode
+        gp_group = h5.create_group('GP')
+        with h5py.File(source_file_path, 'r') as source_file:
+            # Iterate through the sector groups in the source file
+            for sector_name in source_file.keys():
+                actual_name = sector_name.split('_')[1]
+                sector_group = source_file[sector_name]
+                gp_ = sector_group['gp']
+                # Copy the 'GP' subgroup to the corresponding sector in the destination file
+                subsector_group = gp_group.create_group('sector_'+actual_name)
+                source_file.copy(gp_, subsector_group, name='GP')
+
+    logger.info(f"Final output file has been written out to {file_name}")
 
     print(f"All done with {tic_id}! Check out the final output file for the results")
 
