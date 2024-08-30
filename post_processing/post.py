@@ -174,7 +174,7 @@ def fit_completeness_function(completeness, recovered, injected_eds):
     # Calculate the 50% completeness value
     fifty=np.interp(0.5, fit, x_interp)
     
-    return fit, fifty, k_fit, x0_fit
+    return fit, np.log10(fifty), k_fit, x0_fit #Set 50% comp to log to match the rest of the EDs
 
 def calculate_raw_flare_rates(equivalent_durations, flare_starts, flare_ends, duration, lc_table):
     """
@@ -204,7 +204,7 @@ def calculate_raw_flare_rates(equivalent_durations, flare_starts, flare_ends, du
                     fluxerr=np.median(np.array(lc_table['flux_err']))/np.median(np.array(lc_table['flux'])))    
 
     
-    return ed,rate,ed_err,rate_err
+    return ed,rate,ed_err,rate_err #ED is in log seconds 
 
 def perform_completeness_correction(comp_logistic_function_params, FFD_eds,
                                     fifty_percent_complentess_limit, raw_rates, rate_err):
@@ -223,7 +223,7 @@ def perform_completeness_correction(comp_logistic_function_params, FFD_eds,
     """
 
     # Calculate the completeness correction
-    comp = Logistic_function(FFD_eds, comp_logistic_function_params[0], comp_logistic_function_params[1])
+    comp = Logistic_function(10**FFD_eds, comp_logistic_function_params[0], comp_logistic_function_params[1])
 
     if len(raw_rates[FFD_eds > fifty_percent_complentess_limit]) > 0:
         corrected_rates = (raw_rates[FFD_eds > fifty_percent_complentess_limit]-np.log10(comp[FFD_eds > fifty_percent_complentess_limit]))
@@ -300,7 +300,7 @@ def combine_all_sectors_and_fit_FFD(list_of_sector_flare_starts, list_of_sector_
     # Fit a power-law to the FFD
 
     params_all_sec_combined_corrected, var_all_sec_combined_corrected = curve_fit(line, eds_above_lim, corrected_rate, sigma=rate_err_above_lim)
-    
+
     slope = params_all_sec_combined_corrected[0]
 
     intercept = params_all_sec_combined_corrected[1] 
@@ -320,13 +320,12 @@ def fit_FFD_with_fixed_slope(corrected_rates, rate_err, corrected_eds, slope):
     Returns:
     - beta: The best fit Power-Law intercept of the FFD for the sector.
     """
-
     # Fit the FFD for each sector using the fixed slope from the full sample
     if corrected_rates[0] == 0:
         return -99, -99
     else:
         # Use the wrapper function with the fixed slope
-        params, var = curve_fit(lambda x, intercept: line_with_fixed_slope(x, intercept, slope), 
+        params, var = curve_fit(lambda x, intercept: line_with_fixed_slope(x, slope, intercept), 
                                 corrected_eds, corrected_rates, sigma=rate_err)
 
         beta = params[0]
@@ -334,8 +333,8 @@ def fit_FFD_with_fixed_slope(corrected_rates, rate_err, corrected_eds, slope):
         return beta, var[0][0]
 
 def make_diagnostic_plot(tic_id, lc_tables, betas, beta_errs, corrected_eds, corrected_rates, FFD_eds, 
-                         raw_rates, raw_rate_errors, F_flare_F_bols,
-                         fifty_percent_complentess_limits, all_eds, output_path, full_sample_slope, show):
+                         raw_rates, F_flare_F_bols, fifty_percent_complentess_limits, output_path, 
+                         full_sample_slope, show):
     """
     Make 3 Panel Diagnostic plot for each star containing 1) The Completeness Corrected FFD with best fit power law,
     2) The beta vs time plot and 3) L_flare_L_bol plot
@@ -392,16 +391,24 @@ def make_diagnostic_plot(tic_id, lc_tables, betas, beta_errs, corrected_eds, cor
         if betas[i] == -99:
             continue 
         PL_line_xs=np.arange(fifty_percent_complentess_limits[i], max(corrected_eds[i]), .01)
-        ax1.errorbar(FFD_eds[i], raw_rates[i], c=cpick.to_rgba(np.nanmedian(lc_tables[i]['time'])), 
-                     yerr=raw_rate_errors[i], lw=0.5, capsize=2, alpha=.3, fmt='o')
+        ax1.scatter(FFD_eds[i], raw_rates[i], c=cpick.to_rgba(np.nanmedian(lc_tables[i]['time'])), 
+                    s=15, alpha=.1)
         ax1.scatter(corrected_eds[i], corrected_rates[i], c=cpick.to_rgba(np.nanmedian(lc_tables[i]['time'])), 
-                    s=10)
+                    s=35, marker = 's', alpha=.5)
         
-        ax1.plot(PL_line_xs, line(PL_line_xs, full_sample_slope, betas[i]), 
-                 c=cpick.to_rgba(np.nanmedian(lc_tables[i]['time'])), alpha=0.7)
+        ax1.plot(corrected_eds[i], line(corrected_eds[i], full_sample_slope, betas[i]), 
+                 c=cpick.to_rgba(np.nanmedian(lc_tables[i]['time'])), alpha=0.5)
         
-    ax1.set_xlabel('Equivalent Duration (s)')
+    #Dummy lines for legend
+    ax1.scatter(0,0, s=10, marker = 's', alpha=.75, label='Completeness \nCorrected', c='k')
+    ax1.errorbar(0,0, yerr=.01, lw=0.5, capsize=2, alpha=.3, fmt='o', label='Raw', c='k')
+    ax1.plot([0,0], [0,0], alpha=0.7, color='k', label='Powerlaw Fit')
+    ax1.text(-0.5, -2.25, f'Slope: {full_sample_slope:.2f}', fontsize=20)
+        
+    ax1.set_xlabel('log Equivalent Duration (s)')
     ax1.set_ylabel('log Flare Rate (per day)')  
+    ax1.set_xlim(-0.8,3.1)
+    ax1.legend()
 
     # Second Figure is the Beta values vs time
     plot_sector_times = []
@@ -439,18 +446,21 @@ def make_diagnostic_plot(tic_id, lc_tables, betas, beta_errs, corrected_eds, cor
     ax3.cla()
 
     ax3.scatter(plot_sector_times, np.log10(np.array(F_flare_F_bols)), c=cpick.to_rgba(np.array(plot_sector_times)), s=100)
-    ax3.set_ylabel(r'$log(\frac{L_{fl}}{L_{bol}})$', fontsize=24)
+    ax3.set_ylabel(r'$log(\frac{L_{fl}}{L_{TESS}})$', fontsize=30)
     ax3.set_xlabel('Time')
 
     ax4 = plt.subplot(2,2,4)
     ax4 = plt.gca()
     ax4.cla()
 
-    ax4.hist(all_eds, histtype='step', color='black', bins=np.arange(0,100, 4))
-    ax4.set_xlim(-2, 100)
-    ax4.set_xlabel('Equivalent Duration (s)')
-    ax4.set_ylabel('Log N Flares')
-    ax4.set_yscale('log')
+    # Straight flares per sector Time on x-axis 
+    flares_per_sector = []
+    for i in range(len(lc_tables)):
+        flares_per_sector.append(len(FFD_eds[i]))
+
+    ax4.scatter(plot_sector_times, flares_per_sector, c=cpick.to_rgba(np.array(plot_sector_times)), s=100)
+    ax4.set_xlabel('Time')
+    ax4.set_ylabel('N Flares')
 
     plt.subplots_adjust(right=2., top=2.3)
     plt.savefig(output_path+f'{tic_id}_Diagnostic_Figure.pdf', dpi=250, bbox_inches='tight', 
@@ -605,8 +615,8 @@ def post_process(tic_id, output_dir, out_path, show=False):
         fig = "No Flares were found in the full sample, so no FFD was fit"
     else:
         fig = make_diagnostic_plot(tic_id, sector_lcs, sector_beta_values, sector_beta_err_values, 
-                                   corrected_eds, corrected_rates, FFD_eds, raw_rates, raw_rate_err,
-                                   F_Flare_F_Bol, fifty_percent_complentess_limits, all_eds,
+                                   corrected_eds, corrected_rates, FFD_eds, raw_rates,
+                                   F_Flare_F_Bol, fifty_percent_complentess_limits,
                                    fig_save_path, full_sample_slope, show)
     
     logger.info(f'Diagnostic Figure is made, you should go check it out in {fig_save_path}')
@@ -625,7 +635,7 @@ def post_process(tic_id, output_dir, out_path, show=False):
         for i, sublist in enumerate(flare_starts):
             dset[i] = sublist
         
-        dset = h5.create_dataset('flare_ends', (len(flare_ends),), dtype=dt)
+        dset = g.create_dataset('flare_ends', (len(flare_ends),), dtype=dt)
         # Write each sublist to the dataset
         for i, sublist in enumerate(flare_ends):
             dset[i] = sublist
