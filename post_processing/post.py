@@ -39,7 +39,7 @@ def access_data(tic_id, output_dir):
     sectors_available = count_sector_files_in_output_dir(output_dir, tic_id)
     
     for i in range(sectors_available):
-        with h5py.File(f'{tic_id}_sector_combined.h5', 'r') as h5:
+        with h5py.File(f'{output_dir}{tic_id}_sector_combined.h5', 'r') as h5:
             for sector_name in h5.keys():  # Explicitly use .keys() to iterate over all groups
                 sector_group = h5[sector_name] 
                 sector_specific_data[sector_name] = {}
