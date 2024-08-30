@@ -609,7 +609,7 @@ def post_process(tic_id, output_dir, out_path, show=False):
 
 
     # Step 13: Make Diagnostic plot
-    fig_save_path = '../Final_Outputs/diagnostic_plots/'
+    fig_save_path = out_path + f"diagnostic_plots/"
 
     if full_sample_slope == -99:
         fig = "No Flares were found in the full sample, so no FFD was fit"
@@ -624,7 +624,8 @@ def post_process(tic_id, output_dir, out_path, show=False):
     # Step 14: Write out what we actually want to a new h5 file
 
     # setup the file name and check if it already exists
-    file_name = out_path + f"{tic_id}_final_output.h5"
+
+    file_name = out_path + f"files/{tic_id}_final_output.h5"
 
     with h5py.File(file_name, 'w') as h5:
         dt = h5py.special_dtype(vlen=np.dtype('float64'))
@@ -725,13 +726,16 @@ def main():
     parser.add_argument('-p', '--path', default=".", type=str,
                         help='Output path of the data to read in')
     
+    parser.add_argument('-wp', '--write_path', default=".", type=str,
+                        help='Path of the data to write out')
+    
     parser.add_argument('-s', '--show', default=0, type=int,
                         help='Show plot?')
 
     args = parser.parse_args()
 
     # run the pipeline
-    post_process(tic_id=args.tic, output_dir=args.path, show=args.show==1)
+    post_process(tic_id=args.tic, output_dir=args.path, out_path=args.write_path, show=args.show==1)
 
 if __name__ == "__main__":
     main()
