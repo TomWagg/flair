@@ -147,3 +147,4 @@ cov.xml
 *.fits
 *.err
 output/plots
+miniconda3/
