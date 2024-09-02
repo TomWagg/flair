@@ -6,6 +6,7 @@ import os
 import fnmatch
 import h5py
 import flair
+from flair import lupita
 import flair.flares as flares
 from scipy.integrate import trapezoid
 import astropy.units as u
