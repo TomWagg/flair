@@ -50,7 +50,6 @@ def modify_slurm_script(tic, sector, content):
 
 # Process each failed job
 for tic, sector in tics_and_sectors:
-    print(tic, sector)
     # Modify the slurm script for the current job
     modified_content = modify_slurm_script(f'tic{tic}', sector, slurm_script_content)
     # Write the modified content to a new temporary file
