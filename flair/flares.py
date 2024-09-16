@@ -125,7 +125,7 @@ def get_flares(flare_prob, threshold=0.3, min_flare_points=3, merge_absolute=2, 
 
     # create a mask for timesteps that are part of a flare
     flare_mask = np.zeros(len(flare_prob), dtype=bool)
-    if len(long_enough_flares) > 1
+    if len(long_enough_flares) > 1:
         flare_inds = np.concatenate(long_enough_flares)
         flare_mask[flare_inds] = True
 
