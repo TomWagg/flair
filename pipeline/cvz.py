@@ -91,7 +91,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
             # read the GP mean and variance if it exists
             if "gp" in file_keys:
                 mu = f["gp/mu"][:]
-                variance = f["gp/variance"][:]
+                # variance = f["gp/variance"][:]
 
             if "injections" in file_keys:
                 amps = f["injections/amps"][:]
@@ -143,20 +143,23 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         fig.savefig(join(out_path, "plots", f"{tic}_{sector_ind}_flares.png"))
 
     # if the GP mean and variance don't exist, fit the GP
-    if mu is None or variance is None:
+    if mu is None:
         logger.info(f"Fitting GP to lightcurve for TIC {tic} in sector n={sector_ind}")
 
         # fit the GP to the lightcurve
-        opt_gp = flair.gp.fit_GP(lc, flare_mask)
-        mu, variance = opt_gp.predict(y=lc.flux.value[~flare_mask], t=lc.time.value, return_var=True)
+        try:
+            mu = flair.gp.fit_gp_tiny(lc, flare_mask)
+        except:
+            opt_gp = flair.gp.fit_GP(lc, flare_mask)
+            mu, variance = opt_gp.predict(y=lc.flux.value[~flare_mask], t=lc.time.value, return_var=True)
 
         # CHECKPOINT 3: save the GP mean and variance
         with h5.File(file_name, "a") as f:
             g = f.create_group("gp")
             g.create_dataset("mu", data=mu)
-            g.create_dataset("variance", data=variance)
+            # g.create_dataset("variance", data=variance)
 
-        _, _, fig, _ = flair.plot.plot_lc_and_gp(lc, mu=mu, variance=variance, flare_mask=flare_mask,
+        _, _, fig, _ = flair.plot.plot_lc_and_gp(lc, mu=mu, flare_mask=flare_mask,
                                                  highlight_flares=False, show=False)
         fig.savefig(join(out_path, "plots", f"{tic}_{sector_ind}_gp.png"))
 

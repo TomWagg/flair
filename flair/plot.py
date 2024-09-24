@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
+import flair
+
 
 plt.rc('font', family='serif')
 plt.rcParams['text.usetex'] = False
@@ -109,8 +111,8 @@ def plot_lc_with_flares(lc, flare_mask, base_col="black", flare_col="tab:orange"
 
 
 @plot_decorator
-def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None, gp=None,
-                   mu=None, variance=None, time_lims=None, highlight_flares=True,
+def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None,
+                   mu=None, time_lims=None, highlight_flares=True,
                    fig=None, ax=None, show=True):
     """Plot a lightcurve with flares masked and the GP prediction.
 
@@ -124,12 +126,8 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None, gp=None,
         Indices of flare starts
     flare_ends : :class:`numpy.ndarray`
         Indices of flare ends
-    gp : :class:`celerite2.gp.GaussianProcess`
-        GP object
     mu : :class:`numpy.ndarray`, optional
         GP mean, by default None (calculated from gp.predict)
-    variance : :class:`numpy.ndarray`, optional
-        GP variance, by default None (calculated from gp.predict)
     time_lims : `tuple`, optional
         Time limits for the plot, by default None
     highlight_flares : `bool`, optional
@@ -145,8 +143,6 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None, gp=None,
     -------
     mu : :class:`numpy.ndarray`
         GP mean
-    variance : :class:`numpy.ndarray`
-        GP variance
     fig : :class:`matplotlib.figure.Figure`
         Figure of plot
     ax : :class:`matplotlib.axes.Axes`, optional
@@ -159,21 +155,15 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None, gp=None,
         time_mask = np.ones_like(lc.time.value).astype(bool)
         
     # calculate the GP prediction if not provided
-    if mu is None or variance is None:
-        if gp is None:
-            raise ValueError("GP object must be provided to calculate GP prediction.")
-        mu, variance = gp.predict(y=lc.flux.value[~flare_mask],
-                                  t=lc.time.value[time_mask],
-                                  return_var=True)
+    if mu is None:
+        mu = flair.gp.fit_gp_tiny(lc, flare_mask)
 
     # plot the lightcurve with flares masked
     ax.plot(lc.time.value[~flare_mask & time_mask], lc.flux.value[~flare_mask & time_mask],
             label="Data (flares masked)", alpha=1, color="C0")
 
     # plot the GP prediction
-    sigma = np.sqrt(variance)
-    ax.plot(lc.time.value[time_mask], mu, label="GP Prediction", color="C1")
-    ax.fill_between(lc.time.value[time_mask], mu - sigma, mu + sigma, color="C1", alpha=0.2)
+    ax.plot(lc.time.value[~flare_mask & time_mask], mu, label="GP Prediction", color="C1")
 
     # add a legend
     ax.legend(fontsize=0.7 * fs)
@@ -190,4 +180,4 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None, gp=None,
     # set the axis labels
     ax.set(xlabel="Time [BJD - 2457000, days]", ylabel="Flux [e-/s]")
 
-    return mu, variance
+    return mu
