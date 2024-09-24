@@ -1,7 +1,13 @@
 import celerite2
 from celerite2 import terms
-from scipy.optimize import minimize
+from scipy.optimize import minimize as sp_minimize
 import numpy as np
+from astropy.timeseries import LombScargle
+
+from nuance.kernels import rotation
+from nuance.utils import minimize
+from nuance.core import gp_model
+
 
 
 def fit_GP(lc, flare_mask):
@@ -65,9 +71,51 @@ def fit_GP(lc, flare_mask):
         (-10, None)   # Lower bound for the seventh parameter #theta[5]
         ]
 
-    soln = minimize(neg_log_like, initial_params, method="Nelder-Mead", args=(gp,),
+    soln = sp_minimize(neg_log_like, initial_params, method="Nelder-Mead", args=(gp,),
                     bounds=bounds)
     opt_gp = set_params(soln.x, gp)
     
     return opt_gp
 
+def rotation_period(time, flux):
+    """rotation period based on LS periodogram"""
+    ls = LombScargle(time, flux)
+    frequency, power = ls.autopower(minimum_frequency=1 / 10, maximum_frequency=1 / 0.1)
+    period = 1 / frequency[np.argmax(power)]
+    return period
+
+def fit_gp_tiny(lc, flare_mask):
+    """Fit a Gaussian Process to a lightcurve, ignoring flares.
+
+    Parameters
+    ----------
+    lc : :class:`lightkurve.lightcurve.TessLightCurve`
+        Lightcurve to fit
+    flare_mask : :class:`numpy.ndarray`
+        Boolean mask of flares in the lightcurve
+
+    Returns
+    -------
+    gp_mean : :class:`numpy.ndarray`
+        Optimized Gaussian Process mean
+    """
+    # mask the flares out of the lightcurve
+    x = lc.time.value[~flare_mask]
+    y = lc.flux.value[~flare_mask]
+    y_err = lc.flux_err.value[~flare_mask]
+
+    period = rotation_period(x, y.astype(np.float64))
+
+    build_gp, init = rotation(period, y_err.mean(), long_scale=5)
+    mu, nll = gp_model(x, y.astype(np.float64), build_gp)
+
+    # optimization
+    gp_params = minimize(
+        nll, init, ["log_sigma", "log_short_scale", "log_short_sigma", "log_long_sigma"]
+    )
+    gp_params = minimize(nll, gp_params)
+
+    mu, _ = gp_model(x, y.astype(np.float64), build_gp)
+    gp_mean = mu(gp_params)
+
+    return gp_mean
