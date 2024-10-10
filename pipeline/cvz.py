@@ -157,9 +157,10 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         with h5.File(file_name, "a") as f:
             g = f.create_group("gp")
             g.create_dataset("mu", data=mu)
+            g.create_dataset("variance", data=variance)
             # g.create_dataset("variance", data=variance)
 
-        mu_, fig, ax_ = flair.plot.plot_lc_and_gp(lc, flare_mask=flare_mask, mu=mu,
+        mu_, fig = flair.plot.plot_lc_and_gp(lc, flare_mask=flare_mask, mu=mu,
                                                  highlight_flares=False, show=False)
         fig.savefig(join(out_path, "plots", f"{tic}_{sector_ind}_gp.png"))
 

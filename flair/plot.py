@@ -180,4 +180,4 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None,
     # set the axis labels
     ax.set(xlabel="Time [BJD - 2457000, days]", ylabel="Flux [e-/s]")
 
-    return mu, fig, ax
+    return mu, fig

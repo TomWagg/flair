@@ -4,11 +4,6 @@ from scipy.optimize import minimize as sp_minimize
 import numpy as np
 from astropy.timeseries import LombScargle
 
-from nuance.kernels import rotation
-from nuance.utils import minimize
-from nuance.core import gp_model
-
-
 
 def fit_GP(lc, flare_mask):
     """Fit a Gaussian Process to a lightcurve, ignoring flares.
@@ -77,12 +72,15 @@ def fit_GP(lc, flare_mask):
     
     return opt_gp
 
+import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.scipy.optimize import minimize
 from jax import jit
 from tinygp import kernels, GaussianProcess
 from astropy.timeseries import LombScargle
+import jaxopt
+
+jax.config.update("jax_enable_x64", True)
 
 def rotation_period(time, flux):
     """rotation period based on LS periodogram"""
@@ -91,40 +89,37 @@ def rotation_period(time, flux):
     period = 1 / frequency[np.argmax(power)]
     return period
 
-def build_gp(params, time, kernel_type):
-    if kernel_type == "SHO":
-        kernel = kernels.quasisep.SHO(
-            jnp.exp(params["log_sigma"]),
-            jnp.exp(params["log_period"]),
-            jnp.exp(params["log_Q"]),
-        )
-    elif kernel_type == "ExpSquared":
-        kernel = kernels.ExpSquared(
-            jnp.exp(params["log_sigma"]),
-            jnp.exp(params["log_scale"]),
-        )
-    elif kernel_type == "Matern32":
-        kernel = kernels.Matern32(
-            jnp.exp(params["log_sigma"]),
-            jnp.exp(params["log_scale"]),
-        )
-    elif kernel_type == "Combined":
-        kernel = kernels.ExpSquared(
-            jnp.exp(params["log_sigma"]),
-            jnp.exp(params["log_scale"]),
-        ) + kernels.Matern32(
-            jnp.exp(params["log_sigma"]),
-            jnp.exp(params["log_scale"]),
-        )
-    else:
-        raise ValueError(f"Unknown kernel type: {kernel_type}")
-
-    return GaussianProcess(kernel, time, diag=params["error"] ** 2, mean=1.0)
-
 @jit
-def gp_model(params, time, flux, kernel_type):
-    gp = build_gp(params, time, kernel_type)
-    return -gp.log_probability(flux)
+def build_gp(theta, X):
+    # We want most of our parameters to be positive so we take the `exp` here
+    # Note that we're using `jnp` instead of `np`
+    amps = jnp.exp(theta["log_amps"])
+    scales = jnp.exp(theta["log_scales"])
+
+    # Construct the kernel by multiplying and adding `Kernel` objects
+    k1 = amps[0] * kernels.ExpSquared(scales[0])
+    k2 = (
+        amps[1]
+        * kernels.ExpSquared(scales[1])
+        * kernels.ExpSineSquared(
+            scale=jnp.exp(theta["log_period"]),
+            gamma=jnp.exp(theta["log_gamma"]),
+        )
+    )
+    k3 = amps[2] * kernels.RationalQuadratic(
+        alpha=jnp.exp(theta["log_alpha"]), scale=scales[2]
+    )
+    k4 = amps[3] * kernels.ExpSquared(scales[3])
+    kernel = k1 + k2 + k3 + k4
+
+    return GaussianProcess(
+        kernel, X, diag=jnp.exp(theta["log_diag"]), mean=theta["mean"]
+    )
+    
+@jit
+def loss(theta, y, time):
+    return -build_gp(theta, time).log_probability(y)
+
 
 def fit_gp_tiny(lc, flare_mask):
     """Fit a Gaussian Process to a lightcurve, ignoring flares.
@@ -142,58 +137,28 @@ def fit_gp_tiny(lc, flare_mask):
         GP prediction for the entire lightcurve, including flares
     """
     # Mask the flares out of the lightcurve
-    x = lc.time.value[~flare_mask]
-    y = lc.flux.value[~flare_mask]
-    y_err = lc.flux_err.value[~flare_mask]
+    x = lc.time.value[~flare_mask].astype(np.float64)
+    y = lc.flux.value[~flare_mask].astype(np.float64)
+    y_err = lc.flux_err.value[~flare_mask].astype(np.float64)
+    full_time = lc.time.value.astype(np.float64)
+    
 
-    period = rotation_period(x, y.astype(np.float64))
+    period = rotation_period(x, y)
 
-    initial_params = {
-        "log_period": jnp.log(period),
-        "log_Q": jnp.log(100),
-        "log_sigma": jnp.log(1e-1),
-        "log_scale": jnp.log(1.0),  # For ExpSquared and Matern32 kernels
-        "error": jnp.mean(y_err),
+    theta_init = {
+        "mean": np.float64(np.mean(y)),
+        "log_diag": np.log(np.mean(y_err)),
+        "log_amps": np.log([66.0, 24, 0.66, 0.18]),
+        "log_scales": np.log([3, 15, 0.78, 1.6]),
+        "log_period": np.log(period),
+        "log_gamma": np.log(4.3),
+        "log_alpha": np.log(1.2),
     }
+    solver = jaxopt.ScipyMinimize(fun=loss)
+    soln = solver.run(theta_init, y=y, time=x)
+        
+    opt_gp = build_gp(soln.params, x)
+    gp_cond = opt_gp.condition(y, full_time).gp
+    gp_full_mean, var = gp_cond.loc, gp_cond.variance
 
-    kernel_types = ["SHO", "ExpSquared", "Matern32", "Combined"]
-    best_nll = float('inf')
-    best_params = None
-    best_kernel_type = None
-
-    for kernel_type in kernel_types:
-        nll = lambda params: gp_model(params, x, y.astype(np.float64), kernel_type)
-        gp_params = minimize(nll, initial_params, method="Nelder-Mead")
-        current_nll = nll(gp_params)
-
-        if current_nll < best_nll:
-            best_nll = current_nll
-            best_params = gp_params
-            best_kernel_type = kernel_type
-
-    # Predict the GP mean for the entire lightcurve, including flares
-    full_time = lc.time.value
-    gp = build_gp(best_params, full_time, best_kernel_type)
-    gp_full_mean, gp_full_var = gp.predict(y.astype(np.float64), full_time, return_var=True)
-
-    # Calculate residuals and check if the fit is within 3 sigma
-    residuals = y - gp_full_mean[~flare_mask]
-    sigma = np.sqrt(gp_full_var[~flare_mask])
-    if np.any(np.abs(residuals) > 3 * sigma):
-        print("Fit is not within 3 sigma, trying combined kernels.")
-        combined_kernel_types = ["SHO+ExpSquared", "SHO+Matern32", "ExpSquared+Matern32"]
-        for combined_kernel_type in combined_kernel_types:
-            nll = lambda params: gp_model(params, x, y.astype(np.float64), combined_kernel_type)
-            gp_params = minimize(nll, initial_params, method="Nelder-Mead")
-            current_nll = nll(gp_params)
-
-            if current_nll < best_nll:
-                best_nll = current_nll
-                best_params = gp_params
-                best_kernel_type = combined_kernel_type
-
-        # Predict again with the best combined kernel
-        gp = build_gp(best_params, full_time, best_kernel_type)
-        gp_full_mean, gp_full_var = gp.predict(y.astype(np.float64), full_time, return_var=True)
-
-    return gp_full_mean
+    return gp_full_mean, var
