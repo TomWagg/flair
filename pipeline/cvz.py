@@ -159,12 +159,12 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
             g.create_dataset("mu", data=mu)
             # g.create_dataset("variance", data=variance)
 
-        _, _, fig, _ = flair.plot.plot_lc_and_gp(lc, mu=mu, flare_mask=flare_mask,
+        mu_, fig, ax_ = flair.plot.plot_lc_and_gp(lc, flare_mask=flare_mask, mu=mu,
                                                  highlight_flares=False, show=False)
         fig.savefig(join(out_path, "plots", f"{tic}_{sector_ind}_gp.png"))
 
         # fit Equivalent durations 
-        eds= flair.flares.calc_equivalent_durations(lc, flare_starts=flare_starts, flare_ends=flare_ends,
+        eds = flair.flares.calc_equivalent_durations(lc, flare_starts=flare_starts, flare_ends=flare_ends,
                                                     mu=mu)
 
         # CHECKPOINT 4: save the EDs with flare starts and stops

@@ -163,7 +163,7 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None,
             label="Data (flares masked)", alpha=1, color="C0")
 
     # plot the GP prediction
-    ax.plot(lc.time.value[~flare_mask & time_mask], mu, label="GP Prediction", color="C1")
+    ax.plot(lc.time.value, mu, label="GP Prediction", color="C1")
 
     # add a legend
     ax.legend(fontsize=0.7 * fs)
@@ -180,4 +180,4 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None,
     # set the axis labels
     ax.set(xlabel="Time [BJD - 2457000, days]", ylabel="Flux [e-/s]")
 
-    return mu
+    return mu, fig, ax
