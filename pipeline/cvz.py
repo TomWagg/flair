@@ -133,6 +133,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         with h5.File(file_name, "a") as f:
             g = f["lc"]
             g.create_dataset("flare_mask", data=flare_mask)
+            g.create_dataset("avg_pred", data=flare_mask)
         with h5.File(file_name, "a") as f:
             g = f.create_group("flares")
             g.create_dataset("start_times", data=flare_starts)
@@ -146,12 +147,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
     if mu is None:
         logger.info(f"Fitting GP to lightcurve for TIC {tic} in sector n={sector_ind}")
 
-        # fit the GP to the lightcurve
-        try:
-            mu = flair.gp.fit_gp_tiny(lc, flare_mask)
-        except:
-            opt_gp = flair.gp.fit_GP(lc, flare_mask)
-            mu, variance = opt_gp.predict(y=lc.flux.value[~flare_mask], t=lc.time.value, return_var=True)
+        mu = flair.gp.fit_gp_tiny(lc, flare_mask)
 
         # CHECKPOINT 3: save the GP mean and variance
         with h5.File(file_name, "a") as f:
