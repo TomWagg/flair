@@ -70,7 +70,7 @@ def get_stella_predictions(cnn=None, models=None, lc=None, time=None, flux=None,
     return np.nanmedian(preds, axis=0)
 
 
-def get_flares(flare_prob, threshold=0.3, min_flare_points=3, merge_absolute=2, merge_relative=0.2):
+def get_flares(flare_prob, threshold=0.3, min_flare_points=5, merge_absolute=20, merge_relative=0.2):
     """Get a mask for timesteps that are part of a flare and indices of flare starts and ends.
 
     Parameters
@@ -80,9 +80,9 @@ def get_flares(flare_prob, threshold=0.3, min_flare_points=3, merge_absolute=2, 
     threshold : `float`, optional
         Threshold probability, by default 0.3
     min_flare_points : `int`, optional
-        Minimum number of contiguous timesteps necessary for a flare, by default 3
+        Minimum number of contiguous timesteps necessary for a flare, by default 5
     merge_absolute : `int`, optional
-        Merge flares that are closer than this number of timesteps, by default 2
+        Merge flares that are closer than this number of timesteps, by default 20
     merge_relative : `float`, optional
         Merge flares that are closer than this fraction of the flare duration, by default 0.2
 

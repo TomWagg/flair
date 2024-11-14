@@ -79,6 +79,10 @@ from jax import jit
 from tinygp import kernels, GaussianProcess
 from astropy.timeseries import LombScargle
 import jaxopt
+#from nuance.kernels import rotation
+from nuance.utils import minimize
+from nuance.core import gp_model
+from nuance.utils import sigma_clip_mask
 
 jax.config.update("jax_enable_x64", True)
 
@@ -89,37 +93,92 @@ def rotation_period(time, flux):
     period = 1 / frequency[np.argmax(power)]
     return period
 
-@jit
-def build_gp(theta, X):
-    # We want most of our parameters to be positive so we take the `exp` here
-    # Note that we're using `jnp` instead of `np`
-    amps = jnp.exp(theta["log_amps"])
-    scales = jnp.exp(theta["log_scales"])
+from tinygp import GaussianProcess, kernels
 
-    # Construct the kernel by multiplying and adding `Kernel` objects
-    k1 = amps[0] * kernels.ExpSquared(scales[0])
-    k2 = (
-        amps[1]
-        * kernels.ExpSquared(scales[1])
-        * kernels.ExpSineSquared(
-            scale=jnp.exp(theta["log_period"]),
-            gamma=jnp.exp(theta["log_gamma"]),
+@jit
+def Rotation(sigma, period, Q0, dQ, f):
+    """
+    A kernel for a rotating star with a single mode of oscillation.
+    """
+    Q1 = 1 / 2 + Q0 + dQ
+    w1 = (4 * jnp.pi * Q1) / (period * jnp.sqrt(4 * Q1**2 - 1))
+    s1 = sigma**2 / ((1 + f) * w1 * Q1)
+
+    Q2 = 1 / 2 + Q0
+    w2 = (8 * jnp.pi * Q1) / (period * jnp.sqrt(4 * Q1**2 - 1))
+    s2 = f * sigma**2 / ((1 + f) * w2 * Q2)
+    kernel = kernels.quasisep.SHO(w1, Q1, s1) + kernels.quasisep.SHO(w2, Q2, s2)
+    return kernel
+
+
+def rotation(period=None, error=None, mean=None, long_scale=0.5):
+    initial_params = {
+        "log_period": jnp.log(period) if period is not None else jnp.log(1.0),
+        "log_Q": jnp.log(100),
+        "log_sigma": jnp.log(1e-1),
+        "log_dQ": jnp.log(100),
+        "log_f": jnp.log(2.0),
+        "log_long_sigma": jnp.log(1e-2),
+        "log_jitter": jnp.log(1.0) if error is None else jnp.log(error),
+    }
+
+    def build_gp(params, time):
+        jitter2 = 2*jnp.exp(2 * params["log_jitter"])
+        long_sigma = jnp.exp(params["log_long_sigma"])
+
+        kernel = (
+            Rotation(
+                jnp.exp(params["log_sigma"]),
+                jnp.exp(params["log_period"]),
+                jnp.exp(params["log_Q"]),
+                jnp.exp(params["log_dQ"]),
+                jnp.exp(params["log_f"]),
+            )
+            + kernels.quasisep.Exp(long_scale, long_sigma)
         )
-    )
-    k3 = amps[2] * kernels.RationalQuadratic(
-        alpha=jnp.exp(theta["log_alpha"]), scale=scales[2]
-    )
-    k4 = amps[3] * kernels.ExpSquared(scales[3])
-    kernel = k1 + k2 + k3 + k4
 
-    return GaussianProcess(
-        kernel, X, diag=jnp.exp(theta["log_diag"]), mean=theta["mean"]
-    )
+        return GaussianProcess(kernel, time, diag=jitter2, mean=mean)
+
+    return build_gp, initial_params
+
+def gp_model(x, y, build_gp, X=None):
+
+    if X is None:
+        X = jnp.atleast_2d(jnp.ones_like(x))
+
+    @jax.jit
+    def nll_w(params):
+        gp = build_gp(params, x)
+        Liy = gp.solver.solve_triangular(y)
+        LiX = gp.solver.solve_triangular(X.T)
+        LiXT = LiX.T
+        LiX2 = LiXT @ LiX
+        w = jnp.linalg.lstsq(LiX2, LiXT @ Liy)[0]
+        nll = -gp.log_probability(y - w @ X)
+        return nll, w
+
+    @jax.jit
+    def nll(params):
+        return nll_w(params)[0]
+
+    @jax.jit
+    def gp_(params):
+        gp = build_gp(params, x)
+        _, w = nll_w(params)
+        cond_gp = gp.condition(y - w @ X, x).gp
+        return cond_gp.loc + w @ X
+
+    return gp_, nll
+
+def full_time_incorporated(x, y, full_time, build_gp, gp_params):
     
-@jit
-def loss(theta, y, time):
-    return -build_gp(theta, time).log_probability(y)
-
+    @jax.jit
+    def fit(gp_params): 
+        opt_gp = build_gp(gp_params, x)
+        gp_cond = opt_gp.condition(y, full_time).gp
+        return gp_cond.loc
+    
+    return fit
 
 def fit_gp_tiny(lc, flare_mask):
     """Fit a Gaussian Process to a lightcurve, ignoring flares.
@@ -142,23 +201,40 @@ def fit_gp_tiny(lc, flare_mask):
     y_err = lc.flux_err.value[~flare_mask].astype(np.float64)
     full_time = lc.time.value.astype(np.float64)
     
+    period = rotation_period(x, y.astype(np.float64))
+    build_gp, init = rotation(period, y_err.mean(), mean=np.mean(y), long_scale=200)
 
-    period = rotation_period(x, y)
+    gp_, nll = gp_model(x, y.astype(np.float64), build_gp)
 
-    theta_init = {
-        "mean": np.float64(np.mean(y)),
-        "log_diag": np.log(np.mean(y_err)),
-        "log_amps": np.log([66.0, 24, 0.66, 0.18]),
-        "log_scales": np.log([3, 15, 0.78, 1.6]),
-        "log_period": np.log(period),
-        "log_gamma": np.log(4.3),
-        "log_alpha": np.log(1.2),
-    }
-    solver = jaxopt.ScipyMinimize(fun=loss)
-    soln = solver.run(theta_init, y=y, time=x)
-        
-    opt_gp = build_gp(soln.params, x)
-    gp_cond = opt_gp.condition(y, full_time).gp
-    gp_full_mean, var = gp_cond.loc, gp_cond.variance
+    # optimization
+    gp_params = minimize(nll, init, ["log_sigma"])
+    gp_params = minimize(nll, gp_params)
+    clipped_mask = np.ones_like(x).astype(bool)
 
-    return gp_full_mean, var
+    # Perform sigma clipping
+    for _ in range(3):
+        residuals = y - gp_(gp_params)
+        clipped_mask = clipped_mask & sigma_clip_mask(residuals, sigma=4.0, window=20)
+        gp_params = minimize(nll, gp_params)
+
+    time_clipped_masked = x[clipped_mask]
+    flux_clipped_masked = y[clipped_mask]
+
+    gp_2, nll2 = gp_model(time_clipped_masked, flux_clipped_masked, build_gp)
+
+    # optimization V2
+    gp_params = minimize(nll2, gp_params, ["log_sigma", "log_long_sigma"])
+    gp_params = minimize(nll2, gp_params, ["log_period"])
+    gp_params = minimize(nll2, gp_params)
+
+    # Fit the GP to the full time array
+    gp_full = full_time_incorporated(x, y, full_time, build_gp, gp_params)
+    gp_full_mean = gp_full(gp_params)
+    
+    return gp_full_mean
+
+# jax_mapping jax transform 
+
+# The optimization might need to be done in parallel 
+
+# Try and do masking outside of the function
