@@ -12,6 +12,15 @@ import sys
 sys.path.append("../")
 
 import flair
+from astropy.timeseries import LombScargle
+
+def rotation_period(time, flux):
+    """rotation period based on LS periodogram"""
+    ls = LombScargle(time, flux)
+    frequency, power = ls.autopower(minimum_frequency=1 / 10, maximum_frequency=1 / 0.1)
+    period = 1 / frequency[np.argmax(power)]
+    return period
+
 
 def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, sector_ind=0, log_level="NOTSET"):
     """
@@ -110,7 +119,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         lk.conf.cache_dir = cache_path
 
         # download the lightcurve
-        lc = flair.lightcurve.get_lightcurve(target=tic, mission='TESS', author='SPOC', ind=sector_ind)
+        lc = flair.lightcurve.get_lightcurve(target=tic, mission='TESS', exptime=120, author='SPOC', ind=sector_ind)
         
         # CHECKPOINT 1: save the lightcurve
         with h5.File(file_name, "w") as f:
@@ -127,7 +136,7 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         # predict the flares and create a mask
         avg_pred = flair.flares.get_stella_predictions(cnn=cnn, models=models, lc=lc)
         flare_mask, flare_starts, flare_ends = flair.flares.get_flares(flare_prob=avg_pred, min_flare_points=3,
-                                                                       merge_absolute=2, merge_relative=0.2)
+                                                                       merge_absolute=20, merge_relative=0.2)
 
         # CHECKPOINT 2: save the flare mask
         with h5.File(file_name, "a") as f:
@@ -147,17 +156,19 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
     if mu is None:
         logger.info(f"Fitting GP to lightcurve for TIC {tic} in sector n={sector_ind}")
 
-        mu = flair.gp.fit_gp_tiny(lc, flare_mask)
+        period = rotation_period(lc.time.value[~flare_mask], lc.flux.value[~flare_mask])
+        mu = flair.gp.fit_gp_tiny(lc, flare_mask, period)
 
         # CHECKPOINT 3: save the GP mean and variance
         with h5.File(file_name, "a") as f:
             g = f.create_group("gp")
             g.create_dataset("mu", data=mu)
-            g.create_dataset("variance", data=variance)
+            # g.create_dataset("variance", data=variance)
             # g.create_dataset("variance", data=variance)
 
-        mu_, fig = flair.plot.plot_lc_and_gp(lc, flare_mask=flare_mask, mu=mu,
-                                                 highlight_flares=False, show=False)
+        mu_, fig, _, _ = flair.plot.plot_lc_and_gp(lc, flare_starts=flare_starts, flare_ends=flare_ends,
+                                                   flare_mask=flare_mask, mu=mu,
+                                                   highlight_flares=True, show=False)
         fig.savefig(join(out_path, "plots", f"{tic}_{sector_ind}_gp.png"))
 
         # fit Equivalent durations 

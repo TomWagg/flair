@@ -2,7 +2,7 @@
 ## Job Name
 #SBATCH --job-name=cvz-flair
 #SBATCH --account=astro
-#SBATCH --partition=chpt
+#SBATCH --partition=ckpt-all
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=0:30:00
@@ -25,4 +25,4 @@ OUTPUT_PATH=/gscratch/dirac/flair/output/
 
 echo "Running on ${FLAIR_TIC_ID}, sector ${SLURM_ARRAY_TASK_ID}"
 
-python $SCRIPT_PATH -o $OUTPUT_PATH -c $CACHE_PATH -t $FLAIR_TIC_ID -i $SLURM_ARRAY_TASK_ID -p 1 || python /gscratch/dirac/flair/pipeline/check_failed.py
+python $SCRIPT_PATH -o $OUTPUT_PATH -c $CACHE_PATH -t $FLAIR_TIC_ID -i $SLURM_ARRAY_TASK_ID -p 1

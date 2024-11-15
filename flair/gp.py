@@ -77,7 +77,6 @@ import jax.numpy as jnp
 import numpy as np
 from jax import jit
 from tinygp import kernels, GaussianProcess
-from astropy.timeseries import LombScargle
 import jaxopt
 #from nuance.kernels import rotation
 from nuance.utils import minimize
@@ -85,13 +84,6 @@ from nuance.core import gp_model
 from nuance.utils import sigma_clip_mask
 
 jax.config.update("jax_enable_x64", True)
-
-def rotation_period(time, flux):
-    """rotation period based on LS periodogram"""
-    ls = LombScargle(time, flux)
-    frequency, power = ls.autopower(minimum_frequency=1 / 10, maximum_frequency=1 / 0.1)
-    period = 1 / frequency[np.argmax(power)]
-    return period
 
 from tinygp import GaussianProcess, kernels
 
@@ -180,7 +172,7 @@ def full_time_incorporated(x, y, full_time, build_gp, gp_params):
     
     return fit
 
-def fit_gp_tiny(lc, flare_mask):
+def fit_gp_tiny(lc, flare_mask, period):
     """Fit a Gaussian Process to a lightcurve, ignoring flares.
 
     Parameters
@@ -201,7 +193,6 @@ def fit_gp_tiny(lc, flare_mask):
     y_err = lc.flux_err.value[~flare_mask].astype(np.float64)
     full_time = lc.time.value.astype(np.float64)
     
-    period = rotation_period(x, y.astype(np.float64))
     build_gp, init = rotation(period, y_err.mean(), mean=np.mean(y), long_scale=200)
 
     gp_, nll = gp_model(x, y.astype(np.float64), build_gp)
@@ -230,6 +221,8 @@ def fit_gp_tiny(lc, flare_mask):
     # Fit the GP to the full time array
     gp_full = full_time_incorporated(x, y, full_time, build_gp, gp_params)
     gp_full_mean = gp_full(gp_params)
+    
+    print("GP fit complete")
     
     return gp_full_mean
 

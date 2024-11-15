@@ -5,7 +5,7 @@ with open("cvz.slurm") as f:
     template = f.read()
 
 n_stars = 0
-N_STAR_LIMIT = 100
+N_STAR_LIMIT = 3
 
 with open("../data/TESS_CVZ.csv") as f:
     # go through the CVZ file

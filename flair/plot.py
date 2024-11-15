@@ -156,7 +156,7 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None,
         
     # calculate the GP prediction if not provided
     if mu is None:
-        mu = flair.gp.fit_gp_tiny(lc, flare_mask)
+        mu= flair.gp.fit_gp_tiny(lc, flare_mask)
 
     # plot the lightcurve with flares masked
     ax.plot(lc.time.value[~flare_mask & time_mask], lc.flux.value[~flare_mask & time_mask],
@@ -175,7 +175,7 @@ def plot_lc_and_gp(lc, flare_mask, flare_starts=None, flare_ends=None,
         for s, e in zip(flare_starts, flare_ends):
             start, end = lc.time.value[s], lc.time.value[e]
             if time_lims is None or (start > time_lims[0] and end < time_lims[1]):
-                ax.axvspan(start, end, alpha=0.3, color="grey")
+                ax.axvspan(start, end, alpha=0.15, color="grey")
 
     # set the axis labels
     ax.set(xlabel="Time [BJD - 2457000, days]", ylabel="Flux [e-/s]")

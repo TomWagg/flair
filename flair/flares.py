@@ -156,8 +156,12 @@ def calc_equivalent_durations(lc, flare_starts, flare_ends, mu,
         Equivalent durations of the flares in seconds
     """
     durations = flare_ends - flare_starts
+    
+    flux = lc.flux.value.astype(np.float64)
+    t = lc.time.value.astype(np.float64)
+    
     buff_start, buff_end = durations * rel_buffer_start, durations * rel_buffer_end
     starts, ends = np.floor(flare_starts - buff_start).astype(int), np.ceil(flare_ends + buff_end).astype(int)
-    return ([trapezoid(y=(lc.flux.value[start:end] - mu[start:end]) / np.median(lc.flux.value),
-                      x=lc.time.value[start:end])
+    return ([trapezoid(y=(flux[start:end] - mu[start:end]) / np.median(flux),
+                      x=t[start:end])
             for start, end in zip(starts, ends)] * u.day ).to(u.s)
