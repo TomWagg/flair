@@ -131,8 +131,7 @@ def get_flares(flare_prob, threshold=0.3, min_flare_points=5, merge_absolute=20,
 
     return flare_mask, flare_starts, flare_ends
 
-def calc_equivalent_durations(lc, flare_starts, flare_ends, mu,
-                              rel_buffer_start=0.05, rel_buffer_end=0.2):
+def calc_equivalent_durations(lc, flare_starts, flare_ends, mu):
     """Calculate the equivalent duration of each flare in a lightcurve.
 
     Parameters
@@ -145,10 +144,6 @@ def calc_equivalent_durations(lc, flare_starts, flare_ends, mu,
         Indices of flare ends
     mu : :class:`numpy.ndarray`
         Gaussian process mean
-    rel_buffer_start : `float`, optional
-        Buffer before the flare start as a fraction of the flare duration, by default 0.05
-    rel_buffer_end : float, optional
-        Buffer after the flare end as a fraction of the flare duration, by default 0.2
 
     Returns
     -------
@@ -159,9 +154,9 @@ def calc_equivalent_durations(lc, flare_starts, flare_ends, mu,
     
     flux = lc.flux.value.astype(np.float64)
     t = lc.time.value.astype(np.float64)
+    mu = mu.astype(np.float64)
     
-    buff_start, buff_end = durations * rel_buffer_start, durations * rel_buffer_end
-    starts, ends = np.floor(flare_starts - buff_start).astype(int), np.ceil(flare_ends + buff_end).astype(int)
+    starts, ends = np.floor(flare_starts - 3).astype(int), np.ceil(flare_ends + 10).astype(int)
     return ([trapezoid(y=(flux[start:end] - mu[start:end]) / np.median(flux),
                       x=t[start:end])
             for start, end in zip(starts, ends)] * u.day ).to(u.s)

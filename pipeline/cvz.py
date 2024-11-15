@@ -170,6 +170,8 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
                                                    flare_mask=flare_mask, mu=mu,
                                                    highlight_flares=True, show=False)
         fig.savefig(join(out_path, "plots", f"{tic}_{sector_ind}_gp.png"))
+        
+        print("Finished GP fitting")
 
         # fit Equivalent durations 
         eds = flair.flares.calc_equivalent_durations(lc, flare_starts=flare_starts, flare_ends=flare_ends,
@@ -179,6 +181,8 @@ def cvz_pipeline(tic, n_inject, n_repeat, cache_path, out_path, cpu_count, secto
         with h5.File(file_name, "a") as f:
             g = f["flares"]
             g.create_dataset("equivalent_durations", data=eds)
+            
+        print("Finished EDs")
 
 
     if amps is None or fwhms is None or insert_points is None:
