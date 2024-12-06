@@ -1,5 +1,6 @@
 import lightkurve as lk
 import numpy as np
+from requests.models import HTTPError
 
 __all__ = ["get_all_lightcurves"]
 
@@ -47,7 +48,27 @@ def get_lightcurve(ind=0, **kwargs):
     --------
     :func:`lightkurve.search_lightcurve`
     """
-    return _search_obj_to_lc(lk.search_lightcurve(**kwargs)[ind])
+    
+    # Write try statement for the search since failing
+    num_retry=10
+    wait_time=1.25
+   
+    for attempt_number in range(num_retry):
+        try:
+           return _search_obj_to_lc(lk.search_lightcurve(**kwargs)[ind])
+        except HTTPError as e:
+            if attempt_number < num_retry - 1:
+                print(
+                    f"astroquery.mast call (attempt {attempt_number}) failed: {e}. "
+                    f"Retrying after {wait_time}s."
+                )
+                time.sleep(wait_time)
+                continue
+    print(
+        f"astroquery.mast call failed. Eccentricity post-processing will fail."
+    )
+    return {}
+     
 
 def get_all_lightcurves(**kwargs):
     """Get all lightcurves matching the given search criteria.
