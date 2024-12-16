@@ -1,6 +1,7 @@
 import lightkurve as lk
 import numpy as np
 from requests.models import HTTPError
+import time
 
 __all__ = ["get_all_lightcurves"]
 
@@ -50,8 +51,8 @@ def get_lightcurve(ind=0, **kwargs):
     """
     
     # Write try statement for the search since failing
-    num_retry=10
-    wait_time=1.25
+    num_retry=15
+    wait_time=4
    
     for attempt_number in range(num_retry):
         try:
@@ -65,7 +66,7 @@ def get_lightcurve(ind=0, **kwargs):
                 time.sleep(wait_time)
                 continue
     print(
-        f"astroquery.mast call failed. Eccentricity post-processing will fail."
+        f"astroquery.mast call failed. Post-processing will fail."
     )
     return {}
      

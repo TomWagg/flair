@@ -163,9 +163,13 @@ def fit_completeness_function(completeness, recovered, injected_eds):
         jackknife_completeness[i] = calculate_completeness(jackknife_temp)
 
     jackknife_uncertainty = np.std(jackknife_completeness, axis=0)
+    
+    # Provide initial guesses for the parameters
+    initial_guesses = [0.37, 4.5]
 
     # Fit a logistic function completeness curve to the calculated completeness values
-    popt, pcov= curve_fit(Logistic_function, injected_eds, completeness, sigma=jackknife_uncertainty)
+    popt, pcov= curve_fit(Logistic_function, injected_eds, completeness, 
+                          sigma=jackknife_uncertainty, maxfev=10000, p0=initial_guesses)
     
     k_fit, x0_fit=popt
     x_interp=np.arange(min(injected_eds), max(injected_eds), 0.1)
@@ -299,6 +303,9 @@ def combine_all_sectors_and_fit_FFD(list_of_sector_flare_starts, list_of_sector_
     if corrected_rate[0] == 0:
         return -99, -99, all_eds
     # Fit a power-law to the FFD
+    
+    if len(eds_above_lim) < 2:
+        return -99, -99, all_eds
 
     params_all_sec_combined_corrected, var_all_sec_combined_corrected = curve_fit(line, eds_above_lim, corrected_rate, sigma=rate_err_above_lim)
 
@@ -479,6 +486,8 @@ def post_process(tic_id, output_dir, out_path, show=False):
     
     # Step 1: Count the number of sector files available for the given TIC ID
     # Then Merge the sector files into a single file
+    
+    print("Beginning Post Processing Pipeline for TIC ID: ", tic_id)
 
     # setup the logger with output
     logger = logging.getLogger("flair")
