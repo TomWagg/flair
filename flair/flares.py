@@ -70,7 +70,7 @@ def get_stella_predictions(cnn=None, models=None, lc=None, time=None, flux=None,
     return np.nanmedian(preds, axis=0)
 
 
-def get_flares(flare_prob, threshold=0.3, min_flare_points=5, merge_absolute=20, merge_relative=0.2):
+def get_flares(flare_prob, threshold=0.5, min_flare_points=5, merge_absolute=10, merge_relative=0.2):
     """Get a mask for timesteps that are part of a flare and indices of flare starts and ends.
 
     Parameters
