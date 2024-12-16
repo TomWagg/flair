@@ -148,5 +148,7 @@ cov.xml
 *.err
 *.pdf
 *.png
+*disBatch*
+*job*
 output/plots
 miniconda3/
