@@ -147,5 +147,6 @@ cov.xml
 *.fits
 *.err
 *.pdf
+*.png
 output/plots
 miniconda3/
