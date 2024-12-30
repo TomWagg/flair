@@ -70,7 +70,7 @@ def get_stella_predictions(cnn=None, models=None, lc=None, time=None, flux=None,
     return np.nanmedian(preds, axis=0)
 
 
-def get_flares(flare_prob, threshold=0.5, min_flare_points=5, merge_absolute=10, merge_relative=0.2):
+def get_flares(flare_prob, threshold=0.75, min_flare_points=5, merge_absolute=15, merge_relative=0.02):
     """Get a mask for timesteps that are part of a flare and indices of flare starts and ends.
 
     Parameters
@@ -110,7 +110,8 @@ def get_flares(flare_prob, threshold=0.5, min_flare_points=5, merge_absolute=10,
         gap_size = current_start - most_recent_end
 
         # merge if gap is small enough (either in absolute or relative terms)
-        if gap_size < merge_absolute or gap_size < merge_relative * most_recent_duration:
+        #if gap_size < merge_absolute or gap_size < merge_relative * most_recent_duration:
+        if gap_size < merge_absolute:
             merged_flares[-1] = np.arange(merged_flares[-1][0], flares[i][-1] + 1, dtype=int)
         # otherwise add the new flare to the list
         else:
